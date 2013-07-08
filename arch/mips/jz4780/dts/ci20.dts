@@ -1,0 +1,140 @@
+/*
+ * CI20 device tree
+ *
+ * Copyright (c) 2013 Imagination Technologies
+ * Author: Paul Burton <paul.burton@imgtec.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+#include "jz4780.dtsi"
+
+/ {
+	compatible = "img,ci20";
+
+	chosen {
+		bootargs = "console=ttyS0,115200 clk_ignore_unused";
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x10000000
+		       0x30000000 0x30000000>;
+	};
+
+	clocks {
+		extal: extal {
+			clock-frequency = <48000000>;
+		};
+	};
+
+	board {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges = <>;
+
+		dm9000@0x16000000 {
+			compatible = "davicom,dm9000";
+			davicom,no-eeprom;
+
+			reg = <0x16000000 1   /* addr */
+			       0x16000002 1>; /* data */
+
+			interrupt-parent = <&gpe>;
+			interrupts = <19 0x4>;
+		};
+
+		ir: ir-receiver {
+			compatible = "gpio-ir-receiver";
+			gpios = <&gpe 3 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&msc0 {
+	bus-width = <4>;
+	max-frequency = <48000000>;
+	cd-gpios = <&gpf 20 GPIO_ACTIVE_LOW>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_msc0_pe>;
+};
+
+&ehci {
+	ingenic,vbus-gpio = <&gpf 15 0>;
+};
+
+&ohci {
+	ingenic,vbus-gpio = <&gpf 15 0>;
+};
+
+&nemc {
+	/*
+	 * Only CLE/ALE are needed for the devices that are connected, rather
+	 * than the full address line set.
+	 */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_nemc_data &pins_nemc_cle_ale &pins_nemc_frd_fwe>;
+
+	nand: nand@1 {
+		compatible = "ingenic,jz4780-nand";
+		reg = <1 0 0x1000000>;
+
+		ingenic,nemc-tAS = <10>;
+		ingenic,nemc-tAH = <5>;
+		ingenic,nemc-tBP = <10>;
+		ingenic,nemc-tAW = <15>;
+		ingenic,nemc-tSTRV = <100>;
+
+		ingenic,bch-device = <&bch>;
+		ingenic,ecc-size = <1024>;
+		ingenic,ecc-strength = <24>;
+
+		ingenic,busy-gpio = <&gpa 20 GPIO_ACTIVE_LOW>;
+		ingenic,wp-gpio = <&gpf 22 GPIO_ACTIVE_LOW>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&pins_nemc_cs1>;
+
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		partition@0 {
+			label = "u-boot-spl";
+			reg = <0x0 0x0 0x0 0x800000>;
+		};
+
+		partition@0x800000 {
+			label = "u-boot";
+			reg = <0x0 0x800000 0x0 0x200000>;
+		};
+
+		partition@0xa00000 {
+			label = "u-boot-env";
+			reg = <0x0 0xa00000 0x0 0x200000>;
+		};
+
+		partition@0xc00000 {
+			label = "system";
+			reg = <0x0 0xc00000 0x1 0xff400000>;
+		};
+	};
+};

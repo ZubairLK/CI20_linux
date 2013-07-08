@@ -6,4 +6,7 @@ choice
 config JZ4780_GENERIC
 	bool "Generic JZ4780-based board"
 
+config JZ4780_CI20
+	bool "CI20"
+
 endchoice
