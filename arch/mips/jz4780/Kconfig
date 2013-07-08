@@ -1,0 +1,9 @@
+choice
+	prompt "Machine type"
+	depends on MACH_JZ4780
+	default JZ4780_GENERIC
+
+config JZ4780_GENERIC
+	bool "Generic JZ4780-based board"
+
+endchoice

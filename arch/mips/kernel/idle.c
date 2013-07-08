@@ -73,6 +73,28 @@ void r4k_wait_irqoff(void)
 	"__pastwait:			\n");
 }
 
+extern void (*r4k_blast_dcache)(void);
+
+/*
+ * The Ingenic jz47xx SMP variant has to invalidate the data cache before
+ * executing wait. The CPU & cache clock will be gated until we return from
+ * the wait, and if another core attempts to access data from our data cache
+ * during this time then it will lock up.
+ */
+static void jz_wait_irqoff(void)
+{
+	r4k_blast_dcache();
+
+	if (!need_resched())
+		__asm__(
+		"	.set	push		\n"
+		"	.set	mips3		\n"
+		"	sync			\n"
+		"	wait			\n"
+		"	.set	pop		\n");
+	local_irq_enable();
+}
+
 /*
  * The RM7000 variant has to handle erratum 38.	 The workaround is to not
  * have any pending stores when the WAIT instruction is executed.
@@ -168,7 +190,6 @@ void __init check_wait(void)
 	case CPU_CAVIUM_OCTEON_PLUS:
 	case CPU_CAVIUM_OCTEON2:
 	case CPU_CAVIUM_OCTEON3:
-	case CPU_JZRISC:
 	case CPU_LOONGSON1:
 	case CPU_XLR:
 	case CPU_XLP:
@@ -224,6 +245,11 @@ void __init check_wait(void)
 		   cpu_wait = r4k_wait;
 		 */
 		break;
+	case CPU_JZRISC:
+		if (NR_CPUS > 1)
+			cpu_wait = jz_wait_irqoff;
+		else
+			cpu_wait = r4k_wait;
 	default:
 		break;
 	}

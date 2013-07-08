@@ -1,0 +1,22 @@
+/dts-v1/;
+
+#include "jz4780.dtsi"
+
+/ {
+	compatible = "ingenic,jz4780-board";
+
+	chosen {
+		bootargs = "console=ttyS0,115200 keep_bootcon=1";
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x10000000>;
+	};
+
+	clocks {
+		extal: oscillator {
+			clock-frequency = <48000000>;
+		};
+	};
+};
