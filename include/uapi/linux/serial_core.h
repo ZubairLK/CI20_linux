@@ -57,6 +57,8 @@
 #define PORT_RT2880	29	/* Ralink RT2880 internal UART */
 #define PORT_16550A_FSL64 30	/* Freescale 16550 UART with 64 FIFOs */
 #define PORT_MAX_8250	30	/* max port ID */
+#define PORT_INGENIC_JZ4780 31
+#define PORT_MAX_8250	31	/* max port ID */
 
 /*
  * ARM specific type numbers.  These are not currently guaranteed

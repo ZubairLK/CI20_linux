@@ -348,6 +348,7 @@ static struct of_device_id of_platform_serial_table[] = {
 	{ .compatible = "ibm,qpace-nwp-serial",
 		.data = (void *)PORT_NWPSERIAL, },
 #endif
+	{ .compatible = "ingenic,jz4780-uart", .data = (void *)PORT_INGENIC_JZ4780, },
 	{ .type = "serial",         .data = (void *)PORT_UNKNOWN, },
 	{ /* end of list */ },
 };
