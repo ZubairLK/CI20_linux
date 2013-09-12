@@ -297,10 +297,14 @@ static inline unsigned int decode_config3(struct cpuinfo_mips *c)
 
 	if (config3 & MIPS_CONF3_SM) {
 		c->ases |= MIPS_ASE_SMARTMIPS;
+#if defined(CONFIG_64BIT) || !defined(CONFIG_MIPS_HUGE_TLB_SUPPORT)
 		c->options |= MIPS_CPU_RIXI;
+#endif
 	}
+#if defined(CONFIG_64BIT) || !defined(CONFIG_MIPS_HUGE_TLB_SUPPORT)
 	if (config3 & MIPS_CONF3_RXI)
 		c->options |= MIPS_CPU_RIXI;
+#endif
 	if (config3 & MIPS_CONF3_DSP)
 		c->ases |= MIPS_ASE_DSP;
 	if (config3 & MIPS_CONF3_DSP2P)
