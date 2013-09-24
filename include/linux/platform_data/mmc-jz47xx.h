@@ -1,7 +1,7 @@
-#ifndef __LINUX_MMC_JZ4740_MMC
-#define __LINUX_MMC_JZ4740_MMC
+#ifndef __LINUX_PLATFORM_DATA_MMC_JZ47XX_H
+#define __LINUX_PLATFORM_DATA_MMC_JZ47XX_H
 
-struct jz4740_mmc_platform_data {
+struct jz47xx_mmc_platform_data {
 	int gpio_power;
 	int gpio_card_detect;
 	int gpio_read_only;

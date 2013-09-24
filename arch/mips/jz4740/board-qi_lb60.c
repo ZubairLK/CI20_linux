@@ -27,13 +27,14 @@
 #include <linux/power/gpio-charger.h>
 
 #include <asm/mach-jz4740/jz4740_fb.h>
-#include <asm/mach-jz4740/jz4740_mmc.h>
 #include <asm/mach-jz4740/jz4740_nand.h>
 
 #include <linux/regulator/fixed.h>
 #include <linux/regulator/machine.h>
 
 #include <linux/leds_pwm.h>
+
+#include <linux/platform_data/mmc-jz47xx.h>
 
 #include <asm/mach-jz4740/platform.h>
 
@@ -352,7 +353,7 @@ static struct platform_device qi_lb60_gpio_keys = {
 	}
 };
 
-static struct jz4740_mmc_platform_data qi_lb60_mmc_pdata = {
+static struct jz47xx_mmc_platform_data qi_lb60_mmc_pdata = {
 	.gpio_card_detect	= QI_LB60_GPIO_SD_CD,
 	.gpio_read_only		= -1,
 	.gpio_power		= QI_LB60_GPIO_SD_VCC_EN_N,
