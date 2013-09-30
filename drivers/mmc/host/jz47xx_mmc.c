@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2009-2010, Lars-Peter Clausen <lars@metafoo.de>
- *  Copyright (c) 2013, Imagination Technologies
+ *  Copyright (C) 2013, Imagination Technologies
  *  JZ47xx SD/MMC controller driver
  *
  *  This program is free software; you can redistribute  it and/or modify it
@@ -14,103 +14,101 @@
  *
  */
 
+#include <linux/bitops.h>
+#include <linux/clk.h>
+#include <linux/delay.h>
+#include <linux/dma-mapping.h>
+#include <linux/err.h>
+#include <linux/gpio.h>
+#include <linux/interrupt.h>
+#include <linux/io.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/slot-gpio.h>
-#include <linux/err.h>
-#include <linux/io.h>
-#include <linux/irq.h>
-#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#include <linux/delay.h>
 #include <linux/scatterlist.h>
-#include <linux/clk.h>
-
-#include <linux/bitops.h>
-#include <linux/gpio.h>
-#include <asm/cacheflush.h>
-#include <linux/dma-mapping.h>
 
 #include <linux/platform_data/mmc-jz47xx.h>
+
+#include <asm/cacheflush.h>
 
 #ifdef CONFIG_MACH_JZ4740
 # include <asm/mach-jz4740/gpio.h>
 #endif
 
-#define JZ_REG_MMC_STRPCL	0x00
-#define JZ_REG_MMC_STATUS	0x04
-#define JZ_REG_MMC_CLKRT	0x08
-#define JZ_REG_MMC_CMDAT	0x0C
-#define JZ_REG_MMC_RESTO	0x10
-#define JZ_REG_MMC_RDTO		0x14
-#define JZ_REG_MMC_BLKLEN	0x18
-#define JZ_REG_MMC_NOB		0x1C
-#define JZ_REG_MMC_SNOB		0x20
-#define JZ_REG_MMC_IMASK	0x24
-#define JZ_REG_MMC_IREG		0x28
-#define JZ_REG_MMC_CMD		0x2C
-#define JZ_REG_MMC_ARG		0x30
-#define JZ_REG_MMC_RESP_FIFO	0x34
-#define JZ_REG_MMC_RXFIFO	0x38
-#define JZ_REG_MMC_TXFIFO	0x3C
+#define JZ_REG_MMC_STRPCL		0x00
+#define JZ_REG_MMC_STATUS		0x04
+#define JZ_REG_MMC_CLKRT		0x08
+#define JZ_REG_MMC_CMDAT		0x0C
+#define JZ_REG_MMC_RESTO		0x10
+#define JZ_REG_MMC_RDTO			0x14
+#define JZ_REG_MMC_BLKLEN		0x18
+#define JZ_REG_MMC_NOB			0x1C
+#define JZ_REG_MMC_SNOB			0x20
+#define JZ_REG_MMC_IMASK		0x24
+#define JZ_REG_MMC_IREG			0x28
+#define JZ_REG_MMC_CMD			0x2C
+#define JZ_REG_MMC_ARG			0x30
+#define JZ_REG_MMC_RESP_FIFO		0x34
+#define JZ_REG_MMC_RXFIFO		0x38
+#define JZ_REG_MMC_TXFIFO		0x3C
 
-#define JZ_MMC_STRPCL_EXIT_MULTIPLE BIT(7)
-#define JZ_MMC_STRPCL_EXIT_TRANSFER BIT(6)
-#define JZ_MMC_STRPCL_START_READWAIT BIT(5)
-#define JZ_MMC_STRPCL_STOP_READWAIT BIT(4)
-#define JZ_MMC_STRPCL_RESET BIT(3)
-#define JZ_MMC_STRPCL_START_OP BIT(2)
-#define JZ_MMC_STRPCL_CLOCK_CONTROL (BIT(1) | BIT(0))
-#define JZ_MMC_STRPCL_CLOCK_STOP BIT(0)
-#define JZ_MMC_STRPCL_CLOCK_START BIT(1)
+#define JZ_MMC_STRPCL_EXIT_MULTIPLE	BIT(7)
+#define JZ_MMC_STRPCL_EXIT_TRANSFER	BIT(6)
+#define JZ_MMC_STRPCL_START_READWAIT	BIT(5)
+#define JZ_MMC_STRPCL_STOP_READWAIT	BIT(4)
+#define JZ_MMC_STRPCL_RESET		BIT(3)
+#define JZ_MMC_STRPCL_START_OP		BIT(2)
+#define JZ_MMC_STRPCL_CLOCK_CONTROL	(BIT(1) | BIT(0))
+#define JZ_MMC_STRPCL_CLOCK_STOP	BIT(0)
+#define JZ_MMC_STRPCL_CLOCK_START	BIT(1)
 
+#define JZ_MMC_STATUS_IS_RESETTING	BIT(15)
+#define JZ_MMC_STATUS_SDIO_INT_ACTIVE	BIT(14)
+#define JZ_MMC_STATUS_PRG_DONE		BIT(13)
+#define JZ_MMC_STATUS_DATA_TRAN_DONE	BIT(12)
+#define JZ_MMC_STATUS_END_CMD_RES	BIT(11)
+#define JZ_MMC_STATUS_DATA_FIFO_AFULL	BIT(10)
+#define JZ_MMC_STATUS_IS_READWAIT	BIT(9)
+#define JZ_MMC_STATUS_CLK_EN		BIT(8)
+#define JZ_MMC_STATUS_DATA_FIFO_FULL	BIT(7)
+#define JZ_MMC_STATUS_DATA_FIFO_EMPTY	BIT(6)
+#define JZ_MMC_STATUS_CRC_RES_ERR	BIT(5)
+#define JZ_MMC_STATUS_CRC_READ_ERROR	BIT(4)
+#define JZ_MMC_STATUS_TIMEOUT_WRITE	BIT(3)
+#define JZ_MMC_STATUS_CRC_WRITE_ERROR	BIT(2)
+#define JZ_MMC_STATUS_TIMEOUT_RES	BIT(1)
+#define JZ_MMC_STATUS_TIMEOUT_READ	BIT(0)
 
-#define JZ_MMC_STATUS_IS_RESETTING BIT(15)
-#define JZ_MMC_STATUS_SDIO_INT_ACTIVE BIT(14)
-#define JZ_MMC_STATUS_PRG_DONE BIT(13)
-#define JZ_MMC_STATUS_DATA_TRAN_DONE BIT(12)
-#define JZ_MMC_STATUS_END_CMD_RES BIT(11)
-#define JZ_MMC_STATUS_DATA_FIFO_AFULL BIT(10)
-#define JZ_MMC_STATUS_IS_READWAIT BIT(9)
-#define JZ_MMC_STATUS_CLK_EN BIT(8)
-#define JZ_MMC_STATUS_DATA_FIFO_FULL BIT(7)
-#define JZ_MMC_STATUS_DATA_FIFO_EMPTY BIT(6)
-#define JZ_MMC_STATUS_CRC_RES_ERR BIT(5)
-#define JZ_MMC_STATUS_CRC_READ_ERROR BIT(4)
-#define JZ_MMC_STATUS_TIMEOUT_WRITE BIT(3)
-#define JZ_MMC_STATUS_CRC_WRITE_ERROR BIT(2)
-#define JZ_MMC_STATUS_TIMEOUT_RES BIT(1)
-#define JZ_MMC_STATUS_TIMEOUT_READ BIT(0)
+#define JZ_MMC_STATUS_READ_ERROR_MASK	\
+	(JZ_MMC_STATUS_CRC_READ_ERROR | JZ_MMC_STATUS_TIMEOUT_READ)
+#define JZ_MMC_STATUS_WRITE_ERROR_MASK	\
+	(JZ_MMC_STATUS_CRC_WRITE_ERROR | JZ_MMC_STATUS_TIMEOUT_WRITE)
 
-#define JZ_MMC_STATUS_READ_ERROR_MASK (BIT(4) | BIT(0))
-#define JZ_MMC_STATUS_WRITE_ERROR_MASK (BIT(3) | BIT(2))
+#define JZ_MMC_CMDAT_IO_ABORT		BIT(11)
+#define JZ_MMC_CMDAT_BUS_WIDTH_4BIT	BIT(10)
+#define JZ_MMC_CMDAT_DMA_EN		BIT(8)
+#define JZ_MMC_CMDAT_INIT		BIT(7)
+#define JZ_MMC_CMDAT_BUSY		BIT(6)
+#define JZ_MMC_CMDAT_STREAM		BIT(5)
+#define JZ_MMC_CMDAT_WRITE		BIT(4)
+#define JZ_MMC_CMDAT_DATA_EN		BIT(3)
+#define JZ_MMC_CMDAT_RESPONSE_FORMAT	(BIT(2) | BIT(1) | BIT(0))
+#define JZ_MMC_CMDAT_RSP_R1		1
+#define JZ_MMC_CMDAT_RSP_R2		2
+#define JZ_MMC_CMDAT_RSP_R3		3
 
+#define JZ_MMC_IRQ_SDIO			BIT(7)
+#define JZ_MMC_IRQ_TXFIFO_WR_REQ	BIT(6)
+#define JZ_MMC_IRQ_RXFIFO_RD_REQ	BIT(5)
+#define JZ_MMC_IRQ_END_CMD_RES		BIT(2)
+#define JZ_MMC_IRQ_PRG_DONE		BIT(1)
+#define JZ_MMC_IRQ_DATA_TRAN_DONE	BIT(0)
 
-#define JZ_MMC_CMDAT_IO_ABORT BIT(11)
-#define JZ_MMC_CMDAT_BUS_WIDTH_4BIT BIT(10)
-#define JZ_MMC_CMDAT_DMA_EN BIT(8)
-#define JZ_MMC_CMDAT_INIT BIT(7)
-#define JZ_MMC_CMDAT_BUSY BIT(6)
-#define JZ_MMC_CMDAT_STREAM BIT(5)
-#define JZ_MMC_CMDAT_WRITE BIT(4)
-#define JZ_MMC_CMDAT_DATA_EN BIT(3)
-#define JZ_MMC_CMDAT_RESPONSE_FORMAT (BIT(2) | BIT(1) | BIT(0))
-#define JZ_MMC_CMDAT_RSP_R1 1
-#define JZ_MMC_CMDAT_RSP_R2 2
-#define JZ_MMC_CMDAT_RSP_R3 3
-
-#define JZ_MMC_IRQ_SDIO BIT(7)
-#define JZ_MMC_IRQ_TXFIFO_WR_REQ BIT(6)
-#define JZ_MMC_IRQ_RXFIFO_RD_REQ BIT(5)
-#define JZ_MMC_IRQ_END_CMD_RES BIT(2)
-#define JZ_MMC_IRQ_PRG_DONE BIT(1)
-#define JZ_MMC_IRQ_DATA_TRAN_DONE BIT(0)
-
-
-#define JZ_MMC_CLK_RATE 24000000
+#define JZ_MMC_CLK_RATE			24000000
 
 enum jz47xx_mmc_version {
 	JZ_MMC_JZ4740,
@@ -134,7 +132,6 @@ struct jz47xx_mmc_host {
 	int gpio_power;
 	bool power_active_low;
 	int irq;
-	int card_detect_irq;
 
 	void __iomem *base;
 	struct mmc_request *req;
@@ -293,7 +290,8 @@ static bool jz47xx_mmc_write_data(struct jz47xx_mmc_host *host,
 		j = i / 8;
 		i = i & 0x7;
 		while (j) {
-			timeout = jz47xx_mmc_poll_irq(host, JZ_MMC_IRQ_TXFIFO_WR_REQ);
+			timeout = jz47xx_mmc_poll_irq(host,
+						JZ_MMC_IRQ_TXFIFO_WR_REQ);
 			if (unlikely(timeout))
 				goto poll_timeout;
 
@@ -309,7 +307,8 @@ static bool jz47xx_mmc_write_data(struct jz47xx_mmc_host *host,
 			--j;
 		}
 		if (unlikely(i)) {
-			timeout = jz47xx_mmc_poll_irq(host, JZ_MMC_IRQ_TXFIFO_WR_REQ);
+			timeout = jz47xx_mmc_poll_irq(host,
+						JZ_MMC_IRQ_TXFIFO_WR_REQ);
 			if (unlikely(timeout))
 				goto poll_timeout;
 
@@ -334,7 +333,7 @@ poll_timeout:
 }
 
 static bool jz47xx_mmc_read_data(struct jz47xx_mmc_host *host,
-				struct mmc_data *data)
+	struct mmc_data *data)
 {
 	struct sg_mapping_iter *miter = &host->miter;
 	void __iomem *fifo_addr = host->base + JZ_REG_MMC_RXFIFO;
@@ -350,7 +349,8 @@ static bool jz47xx_mmc_read_data(struct jz47xx_mmc_host *host,
 		j = i / 32;
 		i = i & 0x1f;
 		while (j) {
-			timeout = jz47xx_mmc_poll_irq(host, JZ_MMC_IRQ_RXFIFO_RD_REQ);
+			timeout = jz47xx_mmc_poll_irq(host,
+						JZ_MMC_IRQ_RXFIFO_RD_REQ);
 			if (unlikely(timeout))
 				goto poll_timeout;
 
@@ -368,7 +368,8 @@ static bool jz47xx_mmc_read_data(struct jz47xx_mmc_host *host,
 		}
 
 		if (unlikely(i)) {
-			timeout = jz47xx_mmc_poll_irq(host, JZ_MMC_IRQ_RXFIFO_RD_REQ);
+			timeout = jz47xx_mmc_poll_irq(host,
+						JZ_MMC_IRQ_RXFIFO_RD_REQ);
 			if (unlikely(timeout))
 				goto poll_timeout;
 
@@ -504,7 +505,6 @@ static void jz47xx_mmc_prepare_data_transfer(struct jz47xx_mmc_host *host)
 	sg_miter_start(&host->miter, data->sg, data->sg_len, direction);
 }
 
-
 static irqreturn_t jz47xx_mmc_irq_worker(int irq, void *devid)
 {
 	struct jz47xx_mmc_host *host = (struct jz47xx_mmc_host *)devid;
@@ -597,14 +597,14 @@ static irqreturn_t jz47xx_mmc_irq(int irq, void *devid)
 			del_timer(&host->timeout_timer);
 
 			if (status & JZ_MMC_STATUS_TIMEOUT_RES) {
-					cmd->error = -ETIMEDOUT;
+				cmd->error = -ETIMEDOUT;
 			} else if (status & JZ_MMC_STATUS_CRC_RES_ERR) {
-					cmd->error = -EIO;
+				cmd->error = -EIO;
 			} else if (status & (JZ_MMC_STATUS_CRC_READ_ERROR |
-				    JZ_MMC_STATUS_CRC_WRITE_ERROR)) {
-					if (cmd->data)
-							cmd->data->error = -EIO;
-					cmd->error = -EIO;
+					JZ_MMC_STATUS_CRC_WRITE_ERROR)) {
+				if (cmd->data)
+					cmd->data->error = -EIO;
+				cmd->error = -EIO;
 			}
 
 			jz47xx_mmc_set_irq_enabled(host, irq_reg, false);
@@ -748,7 +748,7 @@ static const struct of_device_id jz47xx_mmc_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, jz47xx_mmc_of_match);
 
-static int jz47xx_mmc_probe(struct platform_device* pdev)
+static int jz47xx_mmc_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct mmc_host *mmc;
@@ -880,14 +880,14 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 	set_timer_slack(&host->timeout_timer, HZ);
 
 	platform_set_drvdata(pdev, host);
-	ret = mmc_add_host(mmc);
 
+	ret = mmc_add_host(mmc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to add mmc host: %d\n", ret);
 		goto err_gpio_bulk_free;
 	}
-	dev_info(&pdev->dev, "JZ SD/MMC card driver registered\n");
 
+	dev_info(&pdev->dev, "JZ SD/MMC card driver registered\n");
 	return 0;
 
 err_gpio_bulk_free:
