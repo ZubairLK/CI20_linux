@@ -89,7 +89,10 @@
 	(JZ_MMC_STATUS_CRC_WRITE_ERROR | JZ_MMC_STATUS_TIMEOUT_WRITE)
 
 #define JZ_MMC_CMDAT_IO_ABORT		BIT(11)
+#define JZ_MMC_CMDAT_BUS_WIDTH		(BIT(9) | BIT(10))
+#define JZ_MMC_CMDAT_BUS_WIDTH_1BIT	0
 #define JZ_MMC_CMDAT_BUS_WIDTH_4BIT	BIT(10)
+#define JZ_MMC_CMDAT_BUS_WIDTH_8BIT	(BIT(9) | BIT(10))
 #define JZ_MMC_CMDAT_DMA_EN		BIT(8)
 #define JZ_MMC_CMDAT_INIT		BIT(7)
 #define JZ_MMC_CMDAT_BUSY		BIT(6)
@@ -683,10 +686,16 @@ static void jz47xx_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	switch (ios->bus_width) {
 	case MMC_BUS_WIDTH_1:
-		host->cmdat &= ~JZ_MMC_CMDAT_BUS_WIDTH_4BIT;
+		host->cmdat &= ~JZ_MMC_CMDAT_BUS_WIDTH;
+		host->cmdat |= JZ_MMC_CMDAT_BUS_WIDTH_1BIT;
 		break;
 	case MMC_BUS_WIDTH_4:
+		host->cmdat &= ~JZ_MMC_CMDAT_BUS_WIDTH;
 		host->cmdat |= JZ_MMC_CMDAT_BUS_WIDTH_4BIT;
+		break;
+	case MMC_BUS_WIDTH_8:
+		host->cmdat &= ~JZ_MMC_CMDAT_BUS_WIDTH;
+		host->cmdat |= JZ_MMC_CMDAT_BUS_WIDTH_8BIT;
 		break;
 	default:
 		break;
@@ -802,8 +811,24 @@ static int jz47xx_mmc_probe(struct platform_device *pdev)
 	} else {
 		host->version = platform_get_device_id(pdev)->driver_data;
 
+		switch (pdata->bus_width) {
+		case 8:
+			mmc->caps |= MMC_CAP_8_BIT_DATA;
+		case 4:
+			mmc->caps |= MMC_CAP_4_BIT_DATA;
+			break;
+		case 1:
+		case 0:
+			/* Default to 1 if not specified. */
+			break;
+		default:
+			dev_err(&pdev->dev, "Invalid bus_width value %u\n",
+				pdata->bus_width);
+			ret = -EINVAL;
+			goto err_free_host;
+		}
+
 		mmc->f_max = pdata->max_freq;
-		mmc->caps = (pdata->data_1bit) ? 0 : MMC_CAP_4_BIT_DATA;
 
 		if (!pdata->card_detect_active_low)
 			mmc->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
@@ -825,6 +850,16 @@ static int jz47xx_mmc_probe(struct platform_device *pdev)
 
 		host->gpio_power = pdata->gpio_power;
 		host->power_active_low = pdata->power_active_low;
+	}
+
+	/*
+	 * Check that the bus width specified in the DT or platform data is
+	 * supported. 8 bit bus width is only supported from the 4750 onward.
+	 */
+	if (mmc->caps & MMC_CAP_8_BIT_DATA && host->version < JZ_MMC_JZ4750) {
+		dev_err(&pdev->dev, "8 bit bus width is unsupported\n");
+		ret = -EINVAL;
+		goto err_free_host;
 	}
 
 	if (gpio_is_valid(host->gpio_power)) {

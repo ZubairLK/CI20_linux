@@ -358,6 +358,7 @@ static struct jz47xx_mmc_platform_data qi_lb60_mmc_pdata = {
 	.gpio_read_only		= -1,
 	.gpio_power		= QI_LB60_GPIO_SD_VCC_EN_N,
 	.power_active_low	= 1,
+	.bus_width		= 4,
 };
 
 /* OHCI */
