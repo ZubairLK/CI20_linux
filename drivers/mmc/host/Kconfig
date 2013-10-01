@@ -637,10 +637,10 @@ config MMC_SH_MMCIF
 
 config MMC_JZ47XX
 	tristate "JZ47xx SD/Multimedia Card Interface support"
-	depends on MACH_JZ4740
+	depends on MACH_JZ4740 || MACH_JZ4780
 	help
 	  This selects support for the SD/MMC controller on Ingenic JZ4740
-	  SoCs.
+	  and JZ4780 SoCs.
 	  If you have a board based on such a SoC and with a SD/MMC slot,
 	  say Y or M here.
 

@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) 2009-2010, Lars-Peter Clausen <lars@metafoo.de>
+ *  Copyright (c) 2013, Imagination Technologies
  *  JZ47xx SD/MMC controller driver
  *
  *  This program is free software; you can redistribute  it and/or modify it
@@ -113,6 +114,8 @@
 
 enum jz47xx_mmc_version {
 	JZ_MMC_JZ4740,
+	JZ_MMC_JZ4750,
+	JZ_MMC_JZ4780,
 };
 
 enum jz47xx_mmc_state {
@@ -141,7 +144,7 @@ struct jz47xx_mmc_host {
 
 	uint32_t cmdat;
 
-	uint16_t irq_mask;
+	uint32_t irq_mask;
 
 	spinlock_t lock;
 
@@ -149,6 +152,23 @@ struct jz47xx_mmc_host {
 	struct sg_mapping_iter miter;
 	enum jz47xx_mmc_state state;
 };
+
+static uint32_t jz47xx_mmc_read_irq_reg(struct jz47xx_mmc_host *host)
+{
+	/* In the 4780 onwards, IREG is expanded to 32 bits. */
+	if (host->version >= JZ_MMC_JZ4780)
+		return readl(host->base + JZ_REG_MMC_IREG);
+	else
+		return readw(host->base + JZ_REG_MMC_IREG);
+}
+
+static void jz47xx_mmc_write_irq_reg(struct jz47xx_mmc_host *host, uint32_t val)
+{
+	if (host->version >= JZ_MMC_JZ4780)
+		return writel(val, host->base + JZ_REG_MMC_IREG);
+	else
+		return writew(val, host->base + JZ_REG_MMC_IREG);
+}
 
 static void jz47xx_mmc_set_irq_enabled(struct jz47xx_mmc_host *host,
 	unsigned int irq, bool enabled)
@@ -162,7 +182,11 @@ static void jz47xx_mmc_set_irq_enabled(struct jz47xx_mmc_host *host,
 		host->irq_mask |= irq;
 	spin_unlock_irqrestore(&host->lock, flags);
 
-	writew(host->irq_mask, host->base + JZ_REG_MMC_IMASK);
+	/* In the 4750 onwards, IMASK is expanded to 32 bits. */
+	if (host->version >= JZ_MMC_JZ4750)
+		writel(host->irq_mask, host->base + JZ_REG_MMC_IMASK);
+	else
+		writew(host->irq_mask, host->base + JZ_REG_MMC_IMASK);
 }
 
 static void jz47xx_mmc_clock_enable(struct jz47xx_mmc_host *host,
@@ -213,10 +237,10 @@ static unsigned int jz47xx_mmc_poll_irq(struct jz47xx_mmc_host *host,
 	unsigned int irq)
 {
 	unsigned int timeout = 0x800;
-	uint16_t status;
+	uint32_t status;
 
 	do {
-		status = readw(host->base + JZ_REG_MMC_IREG);
+		status = jz47xx_mmc_read_irq_reg(host);
 	} while (!(status & irq) && --timeout);
 
 	if (timeout == 0) {
@@ -316,7 +340,7 @@ static bool jz47xx_mmc_read_data(struct jz47xx_mmc_host *host,
 	void __iomem *fifo_addr = host->base + JZ_REG_MMC_RXFIFO;
 	uint32_t *buf;
 	uint32_t d;
-	uint16_t status;
+	uint32_t status;
 	size_t i, j;
 	unsigned int timeout;
 
@@ -519,7 +543,7 @@ static irqreturn_t jz47xx_mmc_irq_worker(int irq, void *devid)
 			host->state = JZ_MMC_STATE_SEND_STOP;
 			break;
 		}
-		writew(JZ_MMC_IRQ_DATA_TRAN_DONE, host->base + JZ_REG_MMC_IREG);
+		jz47xx_mmc_write_irq_reg(host, JZ_MMC_IRQ_DATA_TRAN_DONE);
 
 	case JZ_MMC_STATE_SEND_STOP:
 		if (!req->stop)
@@ -549,10 +573,10 @@ static irqreturn_t jz47xx_mmc_irq(int irq, void *devid)
 {
 	struct jz47xx_mmc_host *host = devid;
 	struct mmc_command *cmd = host->cmd;
-	uint16_t irq_reg, status, tmp;
+	uint32_t irq_reg, status, tmp;
 
-	irq_reg = readw(host->base + JZ_REG_MMC_IREG);
-
+	status = readl(host->base + JZ_REG_MMC_STATUS);
+	irq_reg = jz47xx_mmc_read_irq_reg(host);
 	tmp = irq_reg;
 	irq_reg &= ~host->irq_mask;
 
@@ -560,10 +584,10 @@ static irqreturn_t jz47xx_mmc_irq(int irq, void *devid)
 		JZ_MMC_IRQ_PRG_DONE | JZ_MMC_IRQ_DATA_TRAN_DONE);
 
 	if (tmp != irq_reg)
-		writew(tmp & ~irq_reg, host->base + JZ_REG_MMC_IREG);
+		jz47xx_mmc_write_irq_reg(host, tmp & ~irq_reg);
 
 	if (irq_reg & JZ_MMC_IRQ_SDIO) {
-		writew(JZ_MMC_IRQ_SDIO, host->base + JZ_REG_MMC_IREG);
+		jz47xx_mmc_write_irq_reg(host, JZ_MMC_IRQ_SDIO);
 		mmc_signal_sdio_irq(host->mmc);
 		irq_reg &= ~JZ_MMC_IRQ_SDIO;
 	}
@@ -571,8 +595,6 @@ static irqreturn_t jz47xx_mmc_irq(int irq, void *devid)
 	if (host->req && cmd && irq_reg) {
 		if (test_and_clear_bit(0, &host->waiting)) {
 			del_timer(&host->timeout_timer);
-
-			status = readl(host->base + JZ_REG_MMC_STATUS);
 
 			if (status & JZ_MMC_STATUS_TIMEOUT_RES) {
 					cmd->error = -ETIMEDOUT;
@@ -586,7 +608,7 @@ static irqreturn_t jz47xx_mmc_irq(int irq, void *devid)
 			}
 
 			jz47xx_mmc_set_irq_enabled(host, irq_reg, false);
-			writew(irq_reg, host->base + JZ_REG_MMC_IREG);
+			jz47xx_mmc_write_irq_reg(host, irq_reg);
 
 			return IRQ_WAKE_THREAD;
 		}
@@ -625,9 +647,7 @@ static void jz47xx_mmc_request(struct mmc_host *mmc, struct mmc_request *req)
 
 	host->req = req;
 
-	writew(0xffff, host->base + JZ_REG_MMC_IREG);
-
-	writew(JZ_MMC_IRQ_END_CMD_RES, host->base + JZ_REG_MMC_IREG);
+	jz47xx_mmc_write_irq_reg(host, 0xffffffff);
 	jz47xx_mmc_set_irq_enabled(host, JZ_MMC_IRQ_END_CMD_RES, true);
 
 	host->state = JZ_MMC_STATE_READ_RESPONSE;
@@ -713,6 +733,9 @@ static struct platform_device_id jz47xx_mmc_id_table[] = {
 	{
 		.name	= "jz4740-mmc",
 		.driver_data = JZ_MMC_JZ4740,
+	}, {
+		.name	= "jz4780-mmc",
+		.driver_data = JZ_MMC_JZ4780,
 	},
 	{},
 };
@@ -720,6 +743,7 @@ MODULE_DEVICE_TABLE(platform, jz47xx_mmc_id_table);
 
 static const struct of_device_id jz47xx_mmc_of_match[] = {
 	{ .compatible = "ingenic,jz4740-mmc", .data = (void *)JZ_MMC_JZ4740 },
+	{ .compatible = "ingenic,jz4780-mmc", .data = (void *)JZ_MMC_JZ4780 },
 	{},
 };
 MODULE_DEVICE_TABLE(of, jz47xx_mmc_of_match);
@@ -839,7 +863,7 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 	host->mmc = mmc;
 	host->pdev = pdev;
 	spin_lock_init(&host->lock);
-	host->irq_mask = 0xffff;
+	host->irq_mask = 0xffffffff;
 
 	ret = devm_request_threaded_irq(&pdev->dev, host->irq, jz47xx_mmc_irq,
 			jz47xx_mmc_irq_worker, 0, dev_name(&pdev->dev), host);
