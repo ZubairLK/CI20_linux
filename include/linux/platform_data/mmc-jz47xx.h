@@ -10,6 +10,8 @@ struct jz47xx_mmc_platform_data {
 	unsigned power_active_low:1;
 
 	unsigned data_1bit:1;
+
+	unsigned int max_freq;
 };
 
 #endif

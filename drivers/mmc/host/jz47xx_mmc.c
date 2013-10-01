@@ -20,6 +20,9 @@
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/scatterlist.h>
@@ -122,10 +125,11 @@ enum jz47xx_mmc_state {
 struct jz47xx_mmc_host {
 	struct mmc_host *mmc;
 	struct platform_device *pdev;
-	struct jz47xx_mmc_platform_data *pdata;
 	struct clk *clk;
 
 	enum jz47xx_mmc_version version;
+	int gpio_power;
+	bool power_active_low;
 	int irq;
 	int card_detect_irq;
 
@@ -594,10 +598,15 @@ static irqreturn_t jz47xx_mmc_irq(int irq, void *devid)
 static int jz47xx_mmc_set_clock_rate(struct jz47xx_mmc_host *host, int rate)
 {
 	int div = 0;
-	int real_rate;
+	int real_rate, ret;
 
 	jz47xx_mmc_clock_disable(host);
-	clk_set_rate(host->clk, JZ_MMC_CLK_RATE);
+	ret = clk_set_rate(host->clk, host->mmc->f_max);
+	if (ret) {
+		dev_warn(&host->pdev->dev,
+			"Unable to set clock rate to %u (%d)\n",
+			host->mmc->f_max, ret);
+	}
 
 	real_rate = clk_get_rate(host->clk);
 
@@ -636,18 +645,18 @@ static void jz47xx_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	switch (ios->power_mode) {
 	case MMC_POWER_UP:
 		jz47xx_mmc_reset(host);
-		if (gpio_is_valid(host->pdata->gpio_power))
-			gpio_set_value(host->pdata->gpio_power,
-					!host->pdata->power_active_low);
+		if (gpio_is_valid(host->gpio_power))
+			gpio_set_value(host->gpio_power,
+					!host->power_active_low);
 		host->cmdat |= JZ_MMC_CMDAT_INIT;
 		clk_prepare_enable(host->clk);
 		break;
 	case MMC_POWER_ON:
 		break;
 	default:
-		if (gpio_is_valid(host->pdata->gpio_power))
-			gpio_set_value(host->pdata->gpio_power,
-					host->pdata->power_active_low);
+		if (gpio_is_valid(host->gpio_power))
+			gpio_set_value(host->gpio_power,
+					host->power_active_low);
 		clk_disable_unprepare(host->clk);
 		break;
 	}
@@ -678,69 +687,6 @@ static const struct mmc_host_ops jz47xx_mmc_ops = {
 	.enable_sdio_irq = jz47xx_mmc_enable_sdio_irq,
 };
 
-static int jz47xx_mmc_request_gpio(struct device *dev, int gpio,
-	const char *name, bool output, int value)
-{
-	int ret;
-
-	if (!gpio_is_valid(gpio))
-		return 0;
-
-	ret = gpio_request(gpio, name);
-	if (ret) {
-		dev_err(dev, "Failed to request %s gpio: %d\n", name, ret);
-		return ret;
-	}
-
-	if (output)
-		gpio_direction_output(gpio, value);
-	else
-		gpio_direction_input(gpio);
-
-	return 0;
-}
-
-static int jz47xx_mmc_request_gpios(struct mmc_host *mmc,
-	struct platform_device *pdev)
-{
-	struct jz47xx_mmc_platform_data *pdata = pdev->dev.platform_data;
-	int ret = 0;
-
-	if (!pdata)
-		return 0;
-
-	if (!pdata->card_detect_active_low)
-		mmc->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
-	if (!pdata->read_only_active_low)
-		mmc->caps2 |= MMC_CAP2_RO_ACTIVE_HIGH;
-
-	if (gpio_is_valid(pdata->gpio_card_detect)) {
-		ret = mmc_gpio_request_cd(mmc, pdata->gpio_card_detect, 0);
-		if (ret)
-			return ret;
-	}
-
-	if (gpio_is_valid(pdata->gpio_read_only)) {
-		ret = mmc_gpio_request_ro(mmc, pdata->gpio_read_only);
-		if (ret)
-			return ret;
-	}
-
-	return jz47xx_mmc_request_gpio(&pdev->dev, pdata->gpio_power,
-			"MMC read only", true, pdata->power_active_low);
-}
-
-static void jz47xx_mmc_free_gpios(struct platform_device *pdev)
-{
-	struct jz47xx_mmc_platform_data *pdata = pdev->dev.platform_data;
-
-	if (!pdata)
-		return;
-
-	if (gpio_is_valid(pdata->gpio_power))
-		gpio_free(pdata->gpio_power);
-}
-
 #ifdef CONFIG_MACH_JZ4740
 
 static const struct jz_gpio_bulk_request jz4740_mmc_pins[] = {
@@ -755,13 +701,28 @@ static const struct jz_gpio_bulk_request jz4740_mmc_pins[] = {
 static inline size_t jz4740_mmc_num_pins(struct jz47xx_mmc_host *host)
 {
 	size_t num_pins = ARRAY_SIZE(jz4740_mmc_pins);
-	if (host->pdata && host->pdata->data_1bit)
+	if (!(host->mmc->caps & MMC_CAP_4_BIT_DATA))
 		num_pins -= 3;
 
 	return num_pins;
 }
 
 #endif /* CONFIG_MACH_JZ4740 */
+
+static struct platform_device_id jz47xx_mmc_id_table[] = {
+	{
+		.name	= "jz4740-mmc",
+		.driver_data = JZ_MMC_JZ4740,
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(platform, jz47xx_mmc_id_table);
+
+static const struct of_device_id jz47xx_mmc_of_match[] = {
+	{ .compatible = "ingenic,jz4740-mmc", .data = (void *)JZ_MMC_JZ4740 },
+	{},
+};
+MODULE_DEVICE_TABLE(of, jz47xx_mmc_of_match);
 
 static int jz47xx_mmc_probe(struct platform_device* pdev)
 {
@@ -770,8 +731,8 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 	struct jz47xx_mmc_host *host;
 	struct jz47xx_mmc_platform_data *pdata;
 	struct resource *res;
-
-	pdata = pdev->dev.platform_data;
+	const struct of_device_id *match;
+	enum of_gpio_flags flags;
 
 	mmc = mmc_alloc_host(sizeof(struct jz47xx_mmc_host), &pdev->dev);
 	if (!mmc) {
@@ -780,8 +741,6 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 	}
 
 	host = mmc_priv(mmc);
-	host->pdata = pdata;
-	host->version = platform_get_device_id(pdev)->driver_data;
 
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq < 0) {
@@ -790,7 +749,7 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 		goto err_free_host;
 	}
 
-	host->clk = devm_clk_get(&pdev->dev, "mmc");
+	host->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(host->clk)) {
 		ret = PTR_ERR(host->clk);
 		dev_err(&pdev->dev, "Failed to get mmc clock\n");
@@ -804,6 +763,57 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 		goto err_free_host;
 	}
 
+	pdata = pdev->dev.platform_data;
+	match = of_match_device(of_match_ptr(jz47xx_mmc_of_match), &pdev->dev);
+	if (match) {
+		host->version = (enum jz47xx_mmc_version)match->data;
+
+		ret = mmc_of_parse(mmc);
+		if (ret)
+			goto err_free_host;
+
+		host->gpio_power = of_get_named_gpio_flags(pdev->dev.of_node,
+					"ingenic,power-gpio", 0, &flags);
+		host->power_active_low = flags & OF_GPIO_ACTIVE_LOW;
+	} else {
+		host->version = platform_get_device_id(pdev)->driver_data;
+
+		mmc->f_max = pdata->max_freq;
+		mmc->caps = (pdata->data_1bit) ? 0 : MMC_CAP_4_BIT_DATA;
+
+		if (!pdata->card_detect_active_low)
+			mmc->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
+		if (!pdata->read_only_active_low)
+			mmc->caps2 |= MMC_CAP2_RO_ACTIVE_HIGH;
+
+		if (gpio_is_valid(pdata->gpio_card_detect)) {
+			ret = mmc_gpio_request_cd(mmc, pdata->gpio_card_detect,
+						  0);
+			if (ret)
+				goto err_free_host;
+		}
+
+		if (gpio_is_valid(pdata->gpio_read_only)) {
+			ret = mmc_gpio_request_ro(mmc, pdata->gpio_read_only);
+			if (ret)
+				goto err_free_host;
+		}
+
+		host->gpio_power = pdata->gpio_power;
+		host->power_active_low = pdata->power_active_low;
+	}
+
+	if (gpio_is_valid(host->gpio_power)) {
+		ret = devm_gpio_request_one(&pdev->dev, host->gpio_power,
+				(host->power_active_low) ? GPIOF_INIT_HIGH : 0,
+				"MMC power");
+		if (ret) {
+			dev_err(&pdev->dev,
+				"Failed to request power gpio: %d\n", ret);
+			goto err_free_host;
+		}
+	}
+
 #ifdef CONFIG_MACH_JZ4740
 	ret = jz_gpio_bulk_request(jz4740_mmc_pins, jz4740_mmc_num_pins(host));
 	if (ret) {
@@ -812,15 +822,11 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 	}
 #endif
 
-	ret = jz47xx_mmc_request_gpios(mmc, pdev);
-	if (ret)
-		goto err_gpio_bulk_free;
-
 	mmc->ops = &jz47xx_mmc_ops;
-	mmc->f_min = JZ_MMC_CLK_RATE / 128;
-	mmc->f_max = JZ_MMC_CLK_RATE;
+	if (!mmc->f_max)
+		mmc->f_max = JZ_MMC_CLK_RATE;
+	mmc->f_min = mmc->f_max / 128;
 	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
-	mmc->caps = (pdata && pdata->data_1bit) ? 0 : MMC_CAP_4_BIT_DATA;
 	mmc->caps |= MMC_CAP_SDIO_IRQ;
 
 	mmc->max_blk_size = (1 << 10) - 1;
@@ -835,11 +841,11 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 	spin_lock_init(&host->lock);
 	host->irq_mask = 0xffff;
 
-	ret = request_threaded_irq(host->irq, jz47xx_mmc_irq,
+	ret = devm_request_threaded_irq(&pdev->dev, host->irq, jz47xx_mmc_irq,
 			jz47xx_mmc_irq_worker, 0, dev_name(&pdev->dev), host);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq: %d\n", ret);
-		goto err_free_gpios;
+		goto err_gpio_bulk_free;
 	}
 
 	jz47xx_mmc_reset(host);
@@ -854,16 +860,12 @@ static int jz47xx_mmc_probe(struct platform_device* pdev)
 
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to add mmc host: %d\n", ret);
-		goto err_free_irq;
+		goto err_gpio_bulk_free;
 	}
 	dev_info(&pdev->dev, "JZ SD/MMC card driver registered\n");
 
 	return 0;
 
-err_free_irq:
-	free_irq(host->irq, host);
-err_free_gpios:
-	jz47xx_mmc_free_gpios(pdev);
 err_gpio_bulk_free:
 #ifdef CONFIG_MACH_JZ4740
 	jz_gpio_bulk_free(jz4740_mmc_pins, jz4740_mmc_num_pins(host));
@@ -884,9 +886,6 @@ static int jz47xx_mmc_remove(struct platform_device *pdev)
 
 	mmc_remove_host(host->mmc);
 
-	free_irq(host->irq, host);
-
-	jz47xx_mmc_free_gpios(pdev);
 #ifdef CONFIG_MACH_JZ4740
 	jz_gpio_bulk_free(jz4740_mmc_pins, jz4740_mmc_num_pins(host));
 #endif
@@ -925,15 +924,6 @@ static SIMPLE_DEV_PM_OPS(jz47xx_mmc_pm_ops, jz47xx_mmc_suspend,
 #define JZ47XX_MMC_PM_OPS NULL
 #endif
 
-static struct platform_device_id jz47xx_mmc_id_table[] = {
-	{
-		.name	= "jz4740-mmc",
-		.driver_data = JZ_MMC_JZ4740,
-	},
-	{},
-};
-MODULE_DEVICE_TABLE(platform, jz47xx_mmc_id_table);
-
 static struct platform_driver jz47xx_mmc_driver = {
 	.probe = jz47xx_mmc_probe,
 	.remove = jz47xx_mmc_remove,
@@ -942,6 +932,7 @@ static struct platform_driver jz47xx_mmc_driver = {
 		.name = "jz47xx-mmc",
 		.owner = THIS_MODULE,
 		.pm = JZ47XX_MMC_PM_OPS,
+		.of_match_table = of_match_ptr(jz47xx_mmc_of_match),
 	},
 };
 
