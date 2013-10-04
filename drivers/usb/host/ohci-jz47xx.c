@@ -197,7 +197,7 @@ static int jz47xx_ohci_probe(struct platform_device *pdev)
 
 
 	clk_set_rate(jz47xx_ohci->clk, 48000000);
-	clk_enable(jz47xx_ohci->clk);
+	clk_prepare_enable(jz47xx_ohci->clk);
 	if (jz47xx_ohci->vbus)
 		ohci_jz47xx_set_vbus_power(jz47xx_ohci, true);
 
