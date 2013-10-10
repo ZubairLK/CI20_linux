@@ -1,6 +1,7 @@
 /*
  *  Copyright (C) 2009-2010, Lars-Peter Clausen <lars@metafoo.de>
  *  Copyright (C) 2010, Paul Cercueil <paul@crapouillou.net>
+ *  Copyright (C) 2013, Imagination Technologies
  *	 JZ47xx SoC RTC driver
  *
  *  This program is free software; you can redistribute it and/or modify it
@@ -29,6 +30,7 @@
 #define JZ_REG_RTC_REGULATOR	0x0C
 #define JZ_REG_RTC_HIBERNATE	0x20
 #define JZ_REG_RTC_SCRATCHPAD	0x34
+#define JZ_REG_RTC_WENR		0x3C
 
 #define JZ_RTC_CTRL_WRDY	BIT(7)
 #define JZ_RTC_CTRL_1HZ		BIT(6)
@@ -38,8 +40,17 @@
 #define JZ_RTC_CTRL_AE		BIT(2)
 #define JZ_RTC_CTRL_ENABLE	BIT(0)
 
+#define JZ_RTC_WENR_PAT		0xa55a
+#define JZ_RTC_WENR_WEN		BIT(31)
+
+enum jz47xx_rtc_version {
+	JZ_RTC_JZ4740,
+	JZ_RTC_JZ4780,
+};
+
 struct jz47xx_rtc {
 	void __iomem *base;
+	enum jz47xx_rtc_version version;
 
 	struct rtc_device *rtc;
 
@@ -56,7 +67,7 @@ static inline uint32_t jz47xx_rtc_reg_read(struct jz47xx_rtc *rtc, size_t reg)
 static int jz47xx_rtc_wait_write_ready(struct jz47xx_rtc *rtc)
 {
 	uint32_t ctrl;
-	int timeout = 1000;
+	int timeout = 10000;
 
 	do {
 		ctrl = jz47xx_rtc_reg_read(rtc, JZ_REG_RTC_CTRL);
@@ -69,11 +80,41 @@ static inline int jz47xx_rtc_reg_write(struct jz47xx_rtc *rtc, size_t reg,
 	uint32_t val)
 {
 	int ret;
-	ret = jz47xx_rtc_wait_write_ready(rtc);
-	if (ret == 0)
-		writel(val, rtc->base + reg);
+	uint32_t wenr;
+	int timeout = 10000;
 
-	return ret;
+	/*
+	 * The 4780 has a write enable register which must have a pattern
+	 * written to it to enable writing to certain registers. Some actions
+	 * (undocumented) appear to cause registers to become unwritable, so to
+	 * be on the safe side do this before each write.
+	 */
+	if (rtc->version >= JZ_RTC_JZ4780) {
+		ret = jz47xx_rtc_wait_write_ready(rtc);
+		if (ret)
+			return ret;
+
+		writel(JZ_RTC_WENR_PAT, rtc->base + JZ_REG_RTC_WENR);
+
+		ret = jz47xx_rtc_wait_write_ready(rtc);
+		if (ret)
+			return ret;
+
+		do {
+			wenr = jz47xx_rtc_reg_read(rtc, JZ_REG_RTC_WENR);
+		} while (!(wenr & JZ_RTC_WENR_WEN) && --timeout);
+
+		if (!timeout)
+			return -EIO;
+	} else {
+		ret = jz47xx_rtc_wait_write_ready(rtc);
+		if (ret)
+			return ret;
+	}
+
+	writel(val, rtc->base + reg);
+
+	return 0;
 }
 
 static int jz47xx_rtc_ctrl_set_bits(struct jz47xx_rtc *rtc, uint32_t mask,
@@ -205,13 +246,15 @@ static irqreturn_t jz47xx_rtc_irq(int irq, void *data)
 }
 
 static struct platform_device_id jz47xx_rtc_id_table[] = {
-	{ .name = "jz4740-rtc" },
+	{ .name = "jz4740-rtc", .driver_data = JZ_RTC_JZ4740 },
+	{ .name = "jz4780-rtc", .driver_data = JZ_RTC_JZ4780 },
 	{},
 };
 MODULE_DEVICE_TABLE(platform, jz47xx_rtc_id_table);
 
 static const struct of_device_id jz47xx_rtc_of_match[] = {
-	{ .compatible = "ingenic,jz4740-rtc" },
+	{ .compatible = "ingenic,jz4740-rtc", .data = (void *)JZ_RTC_JZ4740 },
+	{ .compatible = "ingenic,jz4780-rtc", .data = (void *)JZ_RTC_JZ4780 },
 	{},
 };
 MODULE_DEVICE_TABLE(of, jz47xx_rtc_of_match);
@@ -220,12 +263,19 @@ static int jz47xx_rtc_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct jz47xx_rtc *rtc;
+	const struct of_device_id *match;
 	uint32_t scratchpad;
 	struct resource *mem;
 
 	rtc = devm_kzalloc(&pdev->dev, sizeof(*rtc), GFP_KERNEL);
 	if (!rtc)
 		return -ENOMEM;
+
+	match = of_match_device(jz47xx_rtc_of_match, &pdev->dev);
+	if (match)
+		rtc->version = (enum jz47xx_rtc_version)match->data;
+	else
+		rtc->version = platform_get_device_id(pdev)->driver_data;
 
 	rtc->irq = platform_get_irq(pdev, 0);
 	if (rtc->irq < 0) {
@@ -264,7 +314,7 @@ static int jz47xx_rtc_probe(struct platform_device *pdev)
 		ret = jz47xx_rtc_reg_write(rtc, JZ_REG_RTC_SCRATCHPAD, 0x12345678);
 		ret = jz47xx_rtc_reg_write(rtc, JZ_REG_RTC_SEC, 0);
 		if (ret) {
-			dev_err(&pdev->dev, "Could not write write to RTC registers\n");
+			dev_err(&pdev->dev, "Could not write to RTC registers\n");
 			return ret;
 		}
 	}
