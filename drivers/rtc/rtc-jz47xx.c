@@ -17,6 +17,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/slab.h>
@@ -209,6 +210,12 @@ static struct platform_device_id jz47xx_rtc_id_table[] = {
 };
 MODULE_DEVICE_TABLE(platform, jz47xx_rtc_id_table);
 
+static const struct of_device_id jz47xx_rtc_of_match[] = {
+	{ .compatible = "ingenic,jz4740-rtc" },
+	{},
+};
+MODULE_DEVICE_TABLE(of, jz47xx_rtc_of_match);
+
 static int jz47xx_rtc_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -301,6 +308,7 @@ static struct platform_driver jz47xx_rtc_driver = {
 		.name  = "jz47xx-rtc",
 		.owner = THIS_MODULE,
 		.pm    = JZ47XX_RTC_PM_OPS,
+		.of_match_table = of_match_ptr(jz47xx_rtc_of_match),
 	},
 };
 
