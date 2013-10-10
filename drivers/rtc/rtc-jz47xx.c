@@ -203,13 +203,6 @@ static irqreturn_t jz47xx_rtc_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-void jz47xx_rtc_poweroff(struct device *dev)
-{
-	struct jz47xx_rtc *rtc = dev_get_drvdata(dev);
-	jz47xx_rtc_reg_write(rtc, JZ_REG_RTC_HIBERNATE, 1);
-}
-EXPORT_SYMBOL_GPL(jz47xx_rtc_poweroff);
-
 static struct platform_device_id jz47xx_rtc_id_table[] = {
 	{ .name = "jz4740-rtc" },
 	{},
