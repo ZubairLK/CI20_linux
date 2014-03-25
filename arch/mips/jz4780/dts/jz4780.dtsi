@@ -369,6 +369,26 @@
 								&gpf 24 1 &pincfg_nobias>; /* sck */
 					};
 				};
+
+				pinfunc_msc1: msc1 {
+					pins_msc1_pd: msc1-pd {
+						ingenic,pins = <&gpd 20 0 &pincfg_nobias   /* d0 */
+								&gpd 21 0 &pincfg_nobias   /* d1 */
+								&gpd 22 0 &pincfg_nobias   /* d2 */
+								&gpd 23 0 &pincfg_nobias   /* d3 */
+								&gpd 24 0 &pincfg_nobias   /* clk */
+								&gpd 25 0 &pincfg_nobias>; /* cmd */
+					};
+
+					pins_msc1_pe: msc1-pe {
+						ingenic,pins = <&gpe 20 1 &pincfg_nobias   /* d0 */
+								&gpe 21 1 &pincfg_nobias   /* d1 */
+								&gpe 22 1 &pincfg_nobias   /* d2 */
+								&gpe 23 1 &pincfg_nobias   /* d3 */
+								&gpe 28 1 &pincfg_nobias   /* clk */
+								&gpe 29 1 &pincfg_nobias>; /* cmd */
+					};
+				};
 			};
 
 			uart0: serial@10030000 {
@@ -578,6 +598,19 @@
 
 				dmas = <&dma JZ4780_DMA_MSC0_TX JZ4780_DMA_MSC0_RX 0xffffffff>;
 				dma-names = "rx-tx";
+			};
+
+			msc1: msc@13460000 {
+				compatible = "ingenic,jz4780-mmc";
+				reg = <0x13460000 0x1000>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <36>;
+
+				clocks = <&cgu JZ4780_CLK_MSC1>;
+				dmas = <&dma JZ4780_DMA_MSC1_TX JZ4780_DMA_MSC1_RX 0xffffffff>;
+				dma-names = "rx-tx";
+
 			};
 
 			ehci: jz4780-ehci@0x13490000 {

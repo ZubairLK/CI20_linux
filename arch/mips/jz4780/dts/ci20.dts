@@ -70,6 +70,13 @@
 			enable-active-high;
 			regulator-always-on;
 		};
+
+		wifi: wifi {
+			compatible = "ingenic,iw810x";
+			ingenic,reset-gpio = <&gpf 7 0>;
+			ingenic,power-gpio = <&gpb 19 0>;
+			ingenic,iw810x_32k = "jz47xx-rtc32k";
+		};
 	};
 };
 
@@ -80,6 +87,14 @@
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_msc0_pe>;
+};
+
+&msc1 {
+	bus-width = <4>;
+	max-frequency = <24000000>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_msc1_pd>;
 };
 
 &ehci {
