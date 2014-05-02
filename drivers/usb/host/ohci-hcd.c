@@ -1245,8 +1245,8 @@ MODULE_LICENSE ("GPL");
 #endif
 
 #ifdef CONFIG_MACH_JZ4740
-#include "ohci-jz4740.c"
-#define PLATFORM_DRIVER	ohci_hcd_jz4740_driver
+#include "ohci-jz47xx.c"
+#define PLATFORM_DRIVER	ohci_hcd_jz47xx_driver
 #endif
 
 #ifdef CONFIG_USB_OCTEON_OHCI

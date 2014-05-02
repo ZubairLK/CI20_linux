@@ -16,7 +16,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 
-struct jz4740_ohci_hcd {
+struct jz47xx_ohci_hcd {
 	struct ohci_hcd ohci_hcd;
 
 	struct regulator *vbus;
@@ -24,17 +24,17 @@ struct jz4740_ohci_hcd {
 	struct clk *clk;
 };
 
-static inline struct jz4740_ohci_hcd *hcd_to_jz4740_hcd(struct usb_hcd *hcd)
+static inline struct jz47xx_ohci_hcd *hcd_to_jz47xx_hcd(struct usb_hcd *hcd)
 {
-	return (struct jz4740_ohci_hcd *)(hcd->hcd_priv);
+	return (struct jz47xx_ohci_hcd *)(hcd->hcd_priv);
 }
 
-static inline struct usb_hcd *jz4740_hcd_to_hcd(struct jz4740_ohci_hcd *jz4740_ohci)
+static inline struct usb_hcd *jz47xx_hcd_to_hcd(struct jz47xx_ohci_hcd *jz47xx_ohci)
 {
-	return container_of((void *)jz4740_ohci, struct usb_hcd, hcd_priv);
+	return container_of((void *)jz47xx_ohci, struct usb_hcd, hcd_priv);
 }
 
-static int ohci_jz4740_start(struct usb_hcd *hcd)
+static int ohci_jz47xx_start(struct usb_hcd *hcd)
 {
 	struct ohci_hcd *ohci = hcd_to_ohci(hcd);
 	int	ret;
@@ -55,43 +55,43 @@ static int ohci_jz4740_start(struct usb_hcd *hcd)
 	return 0;
 }
 
-static int ohci_jz4740_set_vbus_power(struct jz4740_ohci_hcd *jz4740_ohci,
+static int ohci_jz47xx_set_vbus_power(struct jz47xx_ohci_hcd *jz47xx_ohci,
 	bool enabled)
 {
 	int ret = 0;
 
-	if (!jz4740_ohci->vbus)
+	if (!jz47xx_ohci->vbus)
 		return 0;
 
-	if (enabled && !jz4740_ohci->vbus_enabled) {
-		ret = regulator_enable(jz4740_ohci->vbus);
+	if (enabled && !jz47xx_ohci->vbus_enabled) {
+		ret = regulator_enable(jz47xx_ohci->vbus);
 		if (ret)
-			dev_err(jz4740_hcd_to_hcd(jz4740_ohci)->self.controller,
+			dev_err(jz47xx_hcd_to_hcd(jz47xx_ohci)->self.controller,
 				"Could not power vbus\n");
-	} else if (!enabled && jz4740_ohci->vbus_enabled) {
-		ret = regulator_disable(jz4740_ohci->vbus);
+	} else if (!enabled && jz47xx_ohci->vbus_enabled) {
+		ret = regulator_disable(jz47xx_ohci->vbus);
 	}
 
 	if (ret == 0)
-		jz4740_ohci->vbus_enabled = enabled;
+		jz47xx_ohci->vbus_enabled = enabled;
 
 	return ret;
 }
 
-static int ohci_jz4740_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
+static int ohci_jz47xx_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u16 wIndex, char *buf, u16 wLength)
 {
-	struct jz4740_ohci_hcd *jz4740_ohci = hcd_to_jz4740_hcd(hcd);
+	struct jz47xx_ohci_hcd *jz47xx_ohci = hcd_to_jz47xx_hcd(hcd);
 	int ret = 0;
 
 	switch (typeReq) {
 	case SetPortFeature:
 		if (wValue == USB_PORT_FEAT_POWER)
-			ret = ohci_jz4740_set_vbus_power(jz4740_ohci, true);
+			ret = ohci_jz47xx_set_vbus_power(jz47xx_ohci, true);
 		break;
 	case ClearPortFeature:
 		if (wValue == USB_PORT_FEAT_POWER)
-			ret = ohci_jz4740_set_vbus_power(jz4740_ohci, false);
+			ret = ohci_jz47xx_set_vbus_power(jz47xx_ohci, false);
 		break;
 	}
 
@@ -102,10 +102,10 @@ static int ohci_jz4740_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 }
 
 
-static const struct hc_driver ohci_jz4740_hc_driver = {
+static const struct hc_driver ohci_jz47xx_hc_driver = {
 	.description =		hcd_name,
-	.product_desc =		"JZ4740 OHCI",
-	.hcd_priv_size =	sizeof(struct jz4740_ohci_hcd),
+	.product_desc =		"jz47xx OHCI",
+	.hcd_priv_size =	sizeof(struct jz47xx_ohci_hcd),
 
 	/*
 	 * generic hardware linkage
@@ -116,7 +116,7 @@ static const struct hc_driver ohci_jz4740_hc_driver = {
 	/*
 	 * basic lifecycle operations
 	 */
-	.start =		ohci_jz4740_start,
+	.start =		ohci_jz47xx_start,
 	.stop =			ohci_stop,
 	.shutdown =		ohci_shutdown,
 
@@ -136,7 +136,7 @@ static const struct hc_driver ohci_jz4740_hc_driver = {
 	 * root hub support
 	 */
 	.hub_status_data =	ohci_hub_status_data,
-	.hub_control =		ohci_jz4740_hub_control,
+	.hub_control =		ohci_jz47xx_hub_control,
 #ifdef	CONFIG_PM
 	.bus_suspend =		ohci_bus_suspend,
 	.bus_resume =		ohci_bus_resume,
@@ -145,11 +145,11 @@ static const struct hc_driver ohci_jz4740_hc_driver = {
 };
 
 
-static int jz4740_ohci_probe(struct platform_device *pdev)
+static int jz47xx_ohci_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct usb_hcd *hcd;
-	struct jz4740_ohci_hcd *jz4740_ohci;
+	struct jz47xx_ohci_hcd *jz47xx_ohci;
 	struct resource *res;
 	int irq;
 
@@ -166,13 +166,13 @@ static int jz4740_ohci_probe(struct platform_device *pdev)
 		return irq;
 	}
 
-	hcd = usb_create_hcd(&ohci_jz4740_hc_driver, &pdev->dev, "jz4740");
+	hcd = usb_create_hcd(&ohci_jz47xx_hc_driver, &pdev->dev, "jz47xx");
 	if (!hcd) {
 		dev_err(&pdev->dev, "Failed to create hcd.\n");
 		return -ENOMEM;
 	}
 
-	jz4740_ohci = hcd_to_jz4740_hcd(hcd);
+	jz47xx_ohci = hcd_to_jz47xx_hcd(hcd);
 
 	hcd->rsrc_start = res->start;
 	hcd->rsrc_len = resource_size(res);
@@ -183,22 +183,22 @@ static int jz4740_ohci_probe(struct platform_device *pdev)
 		goto err_free;
 	}
 
-	jz4740_ohci->clk = devm_clk_get(&pdev->dev, "uhc");
-	if (IS_ERR(jz4740_ohci->clk)) {
-		ret = PTR_ERR(jz4740_ohci->clk);
+	jz47xx_ohci->clk = devm_clk_get(&pdev->dev, "uhc");
+	if (IS_ERR(jz47xx_ohci->clk)) {
+		ret = PTR_ERR(jz47xx_ohci->clk);
 		dev_err(&pdev->dev, "Failed to get clock: %d\n", ret);
 		goto err_free;
 	}
 
-	jz4740_ohci->vbus = devm_regulator_get(&pdev->dev, "vbus");
-	if (IS_ERR(jz4740_ohci->vbus))
-		jz4740_ohci->vbus = NULL;
+	jz47xx_ohci->vbus = devm_regulator_get(&pdev->dev, "vbus");
+	if (IS_ERR(jz47xx_ohci->vbus))
+		jz47xx_ohci->vbus = NULL;
 
 
-	clk_set_rate(jz4740_ohci->clk, 48000000);
-	clk_enable(jz4740_ohci->clk);
-	if (jz4740_ohci->vbus)
-		ohci_jz4740_set_vbus_power(jz4740_ohci, true);
+	clk_set_rate(jz47xx_ohci->clk, 48000000);
+	clk_enable(jz47xx_ohci->clk);
+	if (jz47xx_ohci->vbus)
+		ohci_jz47xx_set_vbus_power(jz47xx_ohci, true);
 
 	platform_set_drvdata(pdev, hcd);
 
@@ -214,9 +214,9 @@ static int jz4740_ohci_probe(struct platform_device *pdev)
 	return 0;
 
 err_disable:
-	if (jz4740_ohci->vbus)
-		regulator_disable(jz4740_ohci->vbus);
-	clk_disable(jz4740_ohci->clk);
+	if (jz47xx_ohci->vbus)
+		regulator_disable(jz47xx_ohci->vbus);
+	clk_disable(jz47xx_ohci->clk);
 
 err_free:
 	usb_put_hcd(hcd);
@@ -224,30 +224,30 @@ err_free:
 	return ret;
 }
 
-static int jz4740_ohci_remove(struct platform_device *pdev)
+static int jz47xx_ohci_remove(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(pdev);
-	struct jz4740_ohci_hcd *jz4740_ohci = hcd_to_jz4740_hcd(hcd);
+	struct jz47xx_ohci_hcd *jz47xx_ohci = hcd_to_jz47xx_hcd(hcd);
 
 	usb_remove_hcd(hcd);
 
-	if (jz4740_ohci->vbus)
-		regulator_disable(jz4740_ohci->vbus);
+	if (jz47xx_ohci->vbus)
+		regulator_disable(jz47xx_ohci->vbus);
 
-	clk_disable(jz4740_ohci->clk);
+	clk_disable(jz47xx_ohci->clk);
 
 	usb_put_hcd(hcd);
 
 	return 0;
 }
 
-static struct platform_driver ohci_hcd_jz4740_driver = {
-	.probe = jz4740_ohci_probe,
-	.remove = jz4740_ohci_remove,
+static struct platform_driver ohci_hcd_jz47xx_driver = {
+	.probe = jz47xx_ohci_probe,
+	.remove = jz47xx_ohci_remove,
 	.driver = {
-		.name = "jz4740-ohci",
+		.name = "jz47xx-ohci",
 		.owner = THIS_MODULE,
 	},
 };
 
-MODULE_ALIAS("platform:jz4740-ohci");
+MODULE_ALIAS("platform:jz47xx-ohci");
