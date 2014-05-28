@@ -15,3 +15,5 @@ obj-$(CONFIG_MVEBU_DEVBUS)	+= mvebu-devbus.o
 obj-$(CONFIG_TEGRA20_MC)	+= tegra20-mc.o
 
 obj-$(CONFIG_TEGRA_MC)		+= tegra/
+obj-$(CONFIG_TEGRA30_MC)	+= tegra30-mc.o
+obj-$(CONFIG_JZ47XX_NEMC)	+= jz47xx-nemc.o
