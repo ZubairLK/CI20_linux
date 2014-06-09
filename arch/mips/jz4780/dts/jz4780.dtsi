@@ -27,6 +27,14 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 
+	aliases {
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+	};
+
 	clocks {
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -420,6 +428,71 @@
 
 				pinctrl-names = "default";
 				pinctrl-0 = <&pins_uart4_data>;
+			};
+
+			i2c0: i2c0@0x10050000 {
+				compatible = "ingenic,jz4780-i2c";
+				reg = <0x10050000 0x1000>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <60>;
+
+				clocks = <&cgu JZ4780_CLK_SMB0>;
+
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+
+			i2c1: i2c1@0x10051000 {
+				compatible = "ingenic,jz4780-i2c";
+				reg = <0x10051000 0x1000>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <59>;
+
+				clocks = <&cgu JZ4780_CLK_SMB1>;
+
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+
+			i2c2: i2c2@0x10052000 {
+				compatible = "ingenic,jz4780-i2c";
+				reg = <0x10052000 0x1000>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <58>;
+
+				clocks = <&cgu JZ4780_CLK_SMB2>;
+
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+
+			i2c3: i2c3@0x10053000 {
+				compatible = "ingenic,jz4780-i2c";
+				reg = <0x10053000 0x1000>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <57>;
+
+				clocks = <&cgu JZ4780_CLK_SMB3>;
+
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+
+			i2c4: i2c4@0x10054000 {
+				compatible = "ingenic,jz4780-i2c";
+				reg = <0x10054000 0x1000>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <56>;
+
+				clocks = <&cgu JZ4780_CLK_SMB4>;
+
+				#address-cells = <1>;
+				#size-cells = <0>;
 			};
 		};
 
