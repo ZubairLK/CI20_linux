@@ -143,6 +143,70 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_i2c0_data>;
+
+	pmic: act8600@5a {
+		compatible = "active-semi,act8600";
+		reg = <0x5a>;
+
+		regulators {
+			vcore1v_reg: DCDC_REG1 {
+				regulator-name = "vcore1v2";
+				regulator-min-microvolt = <1000000>;
+				regulator-max-microvolt = <1400000>;
+				regulator-always-on;
+			};
+
+			vddmem1v5_reg: DCDC_REG2 {
+				regulator-name = "vddmem1v5";
+				regulator-min-microvolt = <1500000>;
+				regulator-max-microvolt = <1500000>;
+				regulator-always-on;
+			};
+
+			vccio3v3_reg: DCDC_REG3 {
+				regulator-name = "vccio3v3";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+			};
+
+			vcc2v5_reg: LDO_REG5 {
+				regulator-name = "vcc2.5";
+				regulator-min-microvolt = <2500000>;
+				regulator-max-microvolt = <2500000>;
+				regulator-always-on;
+			};
+
+			vwifi_reg: LDO_REG6 {
+				regulator-name = "vwifi3v3";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+			};
+
+			vcim2v8_reg: LDO_REG7 {
+				regulator-name = "vcim2v8";
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
+			};
+
+			vcim1v5_reg: LDO_REG8 {
+				regulator-name = "vcim1v5";
+				regulator-min-microvolt = <1500000>;
+				regulator-max-microvolt = <1500000>;
+			};
+
+			/* Do not disable RTC as they connect to reset line */
+			vrtc1v8_reg: LDO_REG9 {
+				regulator-name = "vrtc1v8";
+				regulator-always-on;
+			};
+
+			vrtc1v1_reg: LDO_REG10 {
+				regulator-name = "vrtc1v2";
+				regulator-always-on;
+			};
+		};
+	};
 };
 
 &i2c1 {
