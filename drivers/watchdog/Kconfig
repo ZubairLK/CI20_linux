@@ -1063,8 +1063,8 @@ config INDYDOG
 	  timer expired and no process has written to /dev/watchdog during
 	  that time.
 
-config JZ4740_WDT
-	tristate "Ingenic jz4740 SoC hardware watchdog"
+config JZ47XX_WDT
+	tristate "Ingenic jz47xx SoC hardware watchdog"
 	depends on MACH_JZ4740
 	select WATCHDOG_CORE
 	help

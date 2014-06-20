@@ -325,7 +325,7 @@ static struct resource jz4740_wdt_resources[] = {
 };
 
 struct platform_device jz4740_wdt_device = {
-	.name	       = "jz4740-wdt",
+	.name	       = "jz47xx-wdt",
 	.id	       = -1,
 	.num_resources = ARRAY_SIZE(jz4740_wdt_resources),
 	.resource      = jz4740_wdt_resources,

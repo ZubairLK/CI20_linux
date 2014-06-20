@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2010, Paul Cercueil <paul@crapouillou.net>
- *  JZ4740 Watchdog driver
+ *  jz47xx Watchdog Driver
  *
  *  This program is free software; you can redistribute it and/or modify it
  *  under  the terms of the GNU General  Public License as published by the
@@ -61,24 +61,24 @@ MODULE_PARM_DESC(heartbeat,
 		__MODULE_STRING(MAX_HEARTBEAT) ", default "
 		__MODULE_STRING(DEFAULT_HEARTBEAT));
 
-struct jz4740_wdt_drvdata {
+struct jz47xx_wdt_drvdata {
 	struct watchdog_device wdt;
 	void __iomem *base;
 	struct clk *rtc_clk;
 };
 
-static int jz4740_wdt_ping(struct watchdog_device *wdt_dev)
+static int jz47xx_wdt_ping(struct watchdog_device *wdt_dev)
 {
-	struct jz4740_wdt_drvdata *drvdata = watchdog_get_drvdata(wdt_dev);
+	struct jz47xx_wdt_drvdata *drvdata = watchdog_get_drvdata(wdt_dev);
 
 	writew(0x0, drvdata->base + JZ_REG_WDT_TIMER_COUNTER);
 	return 0;
 }
 
-static int jz4740_wdt_set_timeout(struct watchdog_device *wdt_dev,
+static int jz47xx_wdt_set_timeout(struct watchdog_device *wdt_dev,
 				    unsigned int new_timeout)
 {
-	struct jz4740_wdt_drvdata *drvdata = watchdog_get_drvdata(wdt_dev);
+	struct jz47xx_wdt_drvdata *drvdata = watchdog_get_drvdata(wdt_dev);
 	unsigned int rtc_clk_rate;
 	unsigned int timeout_value;
 	unsigned short clock_div = JZ_WDT_CLOCK_DIV_1;
@@ -111,17 +111,17 @@ static int jz4740_wdt_set_timeout(struct watchdog_device *wdt_dev,
 	return 0;
 }
 
-static int jz4740_wdt_start(struct watchdog_device *wdt_dev)
+static int jz47xx_wdt_start(struct watchdog_device *wdt_dev)
 {
 	jz4740_timer_enable_watchdog();
-	jz4740_wdt_set_timeout(wdt_dev, wdt_dev->timeout);
+	jz47xx_wdt_set_timeout(wdt_dev, wdt_dev->timeout);
 
 	return 0;
 }
 
-static int jz4740_wdt_stop(struct watchdog_device *wdt_dev)
+static int jz47xx_wdt_stop(struct watchdog_device *wdt_dev)
 {
-	struct jz4740_wdt_drvdata *drvdata = watchdog_get_drvdata(wdt_dev);
+	struct jz47xx_wdt_drvdata *drvdata = watchdog_get_drvdata(wdt_dev);
 
 	jz4740_timer_disable_watchdog();
 	writeb(0x0, drvdata->base + JZ_REG_WDT_COUNTER_ENABLE);
@@ -129,27 +129,27 @@ static int jz4740_wdt_stop(struct watchdog_device *wdt_dev)
 	return 0;
 }
 
-static const struct watchdog_info jz4740_wdt_info = {
+static const struct watchdog_info jz47xx_wdt_info = {
 	.options = WDIOF_SETTIMEOUT | WDIOF_KEEPALIVEPING | WDIOF_MAGICCLOSE,
-	.identity = "jz4740 Watchdog",
+	.identity = "jz47xx Watchdog",
 };
 
-static const struct watchdog_ops jz4740_wdt_ops = {
+static const struct watchdog_ops jz47xx_wdt_ops = {
 	.owner = THIS_MODULE,
-	.start = jz4740_wdt_start,
-	.stop = jz4740_wdt_stop,
-	.ping = jz4740_wdt_ping,
-	.set_timeout = jz4740_wdt_set_timeout,
+	.start = jz47xx_wdt_start,
+	.stop = jz47xx_wdt_stop,
+	.ping = jz47xx_wdt_ping,
+	.set_timeout = jz47xx_wdt_set_timeout,
 };
 
-static int jz4740_wdt_probe(struct platform_device *pdev)
+static int jz47xx_wdt_probe(struct platform_device *pdev)
 {
-	struct jz4740_wdt_drvdata *drvdata;
-	struct watchdog_device *jz4740_wdt;
+	struct jz47xx_wdt_drvdata *drvdata;
+	struct watchdog_device *jz47xx_wdt;
 	struct resource	*res;
 	int ret;
 
-	drvdata = devm_kzalloc(&pdev->dev, sizeof(struct jz4740_wdt_drvdata),
+	drvdata = devm_kzalloc(&pdev->dev, sizeof(struct jz47xx_wdt_drvdata),
 			       GFP_KERNEL);
 	if (!drvdata) {
 		dev_err(&pdev->dev, "Unable to alloacate watchdog device\n");
@@ -159,14 +159,14 @@ static int jz4740_wdt_probe(struct platform_device *pdev)
 	if (heartbeat < 1 || heartbeat > MAX_HEARTBEAT)
 		heartbeat = DEFAULT_HEARTBEAT;
 
-	jz4740_wdt = &drvdata->wdt;
-	jz4740_wdt->info = &jz4740_wdt_info;
-	jz4740_wdt->ops = &jz4740_wdt_ops;
-	jz4740_wdt->timeout = heartbeat;
-	jz4740_wdt->min_timeout = 1;
-	jz4740_wdt->max_timeout = MAX_HEARTBEAT;
-	watchdog_set_nowayout(jz4740_wdt, nowayout);
-	watchdog_set_drvdata(jz4740_wdt, drvdata);
+	jz47xx_wdt = &drvdata->wdt;
+	jz47xx_wdt->info = &jz47xx_wdt_info;
+	jz47xx_wdt->ops = &jz47xx_wdt_ops;
+	jz47xx_wdt->timeout = heartbeat;
+	jz47xx_wdt->min_timeout = 1;
+	jz47xx_wdt->max_timeout = MAX_HEARTBEAT;
+	watchdog_set_nowayout(jz47xx_wdt, nowayout);
+	watchdog_set_drvdata(jz47xx_wdt, drvdata);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	drvdata->base = devm_ioremap_resource(&pdev->dev, res);
@@ -195,29 +195,29 @@ err_out:
 	return ret;
 }
 
-static int jz4740_wdt_remove(struct platform_device *pdev)
+static int jz47xx_wdt_remove(struct platform_device *pdev)
 {
-	struct jz4740_wdt_drvdata *drvdata = platform_get_drvdata(pdev);
+	struct jz47xx_wdt_drvdata *drvdata = platform_get_drvdata(pdev);
 
-	jz4740_wdt_stop(&drvdata->wdt);
+	jz47xx_wdt_stop(&drvdata->wdt);
 	watchdog_unregister_device(&drvdata->wdt);
 	clk_put(drvdata->rtc_clk);
 
 	return 0;
 }
 
-static struct platform_driver jz4740_wdt_driver = {
-	.probe = jz4740_wdt_probe,
-	.remove = jz4740_wdt_remove,
+static struct platform_driver jz47xx_wdt_driver = {
+	.probe = jz47xx_wdt_probe,
+	.remove = jz47xx_wdt_remove,
 	.driver = {
-		.name = "jz4740-wdt",
+		.name = "jz47xx-wdt",
 		.owner	= THIS_MODULE,
 	},
 };
 
-module_platform_driver(jz4740_wdt_driver);
+module_platform_driver(jz47xx_wdt_driver);
 
 MODULE_AUTHOR("Paul Cercueil <paul@crapouillou.net>");
-MODULE_DESCRIPTION("jz4740 Watchdog Driver");
+MODULE_DESCRIPTION("jz47xx Watchdog Driver");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:jz4740-wdt");
+MODULE_ALIAS("platform:jz47xx-wdt");
