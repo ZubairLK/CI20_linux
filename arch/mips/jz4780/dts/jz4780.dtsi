@@ -108,6 +108,14 @@
 				interrupts = <27 26 25>;
 			};
 
+			watchdog: jz47xx-watchdog@0x10002000 {
+				compatible = "ingenic,jz4780-watchdog";
+				reg = <0x10002000 0x100>;
+
+				clocks = <&rtclk>;
+				clock-names = "rtc";
+			};
+
 			rtc: rtc@10003000 {
 				compatible = "ingenic,jz4780-rtc";
 				reg = <0x10003000 0x4c>;
