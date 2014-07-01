@@ -87,7 +87,7 @@ struct drm_gem_cma_object *drm_gem_cma_create(struct drm_device *drm,
 	if (IS_ERR(cma_obj))
 		return cma_obj;
 
-	cma_obj->vaddr = dma_alloc_writecombine(drm->dev, size,
+	cma_obj->vaddr = dma_alloc_coherent(drm->dev, size,
 			&cma_obj->paddr, GFP_KERNEL | __GFP_NOWARN);
 	if (!cma_obj->vaddr) {
 		dev_err(drm->dev, "failed to allocate buffer with size %d\n",
@@ -158,7 +158,7 @@ void drm_gem_cma_free_object(struct drm_gem_object *gem_obj)
 	cma_obj = to_drm_gem_cma_obj(gem_obj);
 
 	if (cma_obj->vaddr) {
-		dma_free_writecombine(gem_obj->dev->dev, cma_obj->base.size,
+		dma_free_coherent(gem_obj->dev->dev, cma_obj->base.size,
 				      cma_obj->vaddr, cma_obj->paddr);
 	} else if (gem_obj->import_attach) {
 		drm_prime_gem_destroy(gem_obj, cma_obj->sgt);
