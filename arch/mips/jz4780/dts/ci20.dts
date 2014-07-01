@@ -62,6 +62,14 @@
 			compatible = "gpio-ir-receiver";
 			gpios = <&gpe 3 GPIO_ACTIVE_LOW>;
 		};
+
+		hdmi_power: fixedregulator@1 {
+			compatible = "regulator-fixed";
+			regulator-name = "hdmi_power";
+			gpio = <&gpa 25 GPIO_ACTIVE_LOW>;
+			enable-active-high;
+			regulator-always-on;
+		};
 	};
 };
 
@@ -226,5 +234,5 @@
 &i2c4 {
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pins_i2c4_data_pe>;
+	pinctrl-0 = <&pins_i2c4_data_pf>;
 };

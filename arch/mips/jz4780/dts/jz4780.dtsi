@@ -487,6 +487,36 @@
 				#size-cells = <0>;
 			};
 
+			lcd: jz4780-lcdk@0x13050000 {
+				compatible = "ingenic,jz4780-lcd";
+				reg = <0x13050000 0x1800>;
+
+				clocks = <&cgu JZ4780_CLK_TVE>, <&cgu JZ4780_CLK_LCD0PIXCLK>;
+				clock-names = "lcd_clk", "lcd_pixclk";
+
+				interrupt-parent = <&intc>;
+				interrupts = <31>;
+
+				hdmi = <&hdmi>;
+				ddc = <&i2c4>;
+			};
+
+			hdmi: jz4780-hdmi3@0x10180000 {
+				compatible = "synopsys,dwc-hdmi";
+				reg = <0x10180000 0x8000>;
+				reg-shift = <2>;
+
+				clocks = <&cgu JZ4780_CLK_HDMI>, <&cgu JZ4780_CLK_AHB0>;
+				clock-names = "hdmi" , "ahb";
+
+				clock-frequency = <27000000>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <3>;
+
+				ddc = <&i2c4>;
+			};
+
 			i2c4: i2c4@0x10054000 {
 				compatible = "ingenic,jz4780-i2c";
 				reg = <0x10054000 0x1000>;
