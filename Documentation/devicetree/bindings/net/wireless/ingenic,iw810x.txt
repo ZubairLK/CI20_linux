@@ -1,0 +1,36 @@
+* Ingenic iw810x wireless lan controller
+
+The IW8101/8103 wireless chips embed a Broadcom BCM43362/4330 
+The chip can be connected via SPI or via SDIO. 
+
+The actual driver used for the chips is brcmfmac, this driver simply
+implements helper functions for the brcmfmac driver to control power,
+clock and reset for the chip.
+
+This document describes the binding for the helper driver.
+
+Required properties:
+- compatible :        Should be "ingenic,iw810x"
+- ingenic,reset-gpio : handle to gpio for reset.
+- ingenic,power-gpio : handle to gpio for power
+- ingenic,iw810x_32k : string for 32Khz clock provider
+
+Example board file:
+wifi: wifi {
+	compatible = "ingenic,iw810x";
+	ingenic,reset-gpio = <&gpf 7 0>;
+	ingenic,power-gpio = <&gpb 19 0>;
+	ingenic,iw810x_32k = "jz47xx-rtc32k";
+};
+
+Example soc file for sdio connectivity:
+
+msc1: msc@13460000 {
+	compatible = "ingenic,jz4780-mmc";
+	reg = <0x13460000 0x1000>;
+
+	interrupt-parent = <&intc>;
+	interrupts = <36>;
+
+	clocks = <&cgu JZ4780_CLK_MSC1>;
+};
