@@ -29,10 +29,6 @@
 / {
 	compatible = "img,ci20";
 
-	chosen {
-		bootargs = "console=ttyS0,115200 clk_ignore_unused";
-	};
-
 	memory {
 		device_type = "memory";
 		reg = <0x0 0x10000000
