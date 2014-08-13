@@ -1,3 +1,21 @@
+You should know what you are doing if you are here.
+
+my personal 3.16 wip-branch for mips ci20. I may git push --force rewriting history so use commits at your own risk.
+
+Dont rely on history.
+
+wifi hdmi and eth work.
+
+remove iw810x from /etc/init.d/ if you are on factory rootfs
+
+setenv bootargs console=ttyS0,115200 console=tty0 mem=256M@0x0 mem=768M@0x30000000 clock_ignore_unused root=/dev/mmcblk0p1 rootwait
+or ttyS4 if you want.
+
+check http://elinux.org/MIPS_Creator_CI20 for details 
+
+especially check http://elinux.org/CI20_upstream
+
+
         Linux kernel release 3.x <http://kernel.org/>
 
 These are the release notes for Linux version 3.  Read them carefully,
