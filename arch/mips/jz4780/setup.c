@@ -28,18 +28,20 @@
 #include <linux/of_platform.h>
 
 #include <asm/bootinfo.h>
+#include <asm/fw/fw.h>
 #include <asm/mach-jz4780/jz4780-smp.h>
 #include <asm/prom.h>
 
 void __init plat_mem_setup(void)
 {
 	__dt_setup_arch(__dtb_start);
-	strlcpy(arcs_cmdline, boot_command_line, COMMAND_LINE_SIZE);
+	strlcpy(boot_command_line, arcs_cmdline, COMMAND_LINE_SIZE);
 }
 
 void __init prom_init(void)
 {
 	jz4780_smp_init();
+	fw_init_cmdline();
 }
 
 void prom_free_prom_memory(void)
