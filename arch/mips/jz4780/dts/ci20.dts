@@ -47,6 +47,12 @@
 		compatible = "simple-bus";
 		ranges = <>;
 
+		audio: audio-ci20 {
+			compatible = "ingenic,ci20-audio";
+			ingenic,i2s-controller = <&i2s>;
+			ingenic,codec = <&codec>;
+		};
+
 		ir: ir-receiver {
 			compatible = "gpio-ir-receiver";
 			gpios = <&gpe 3 GPIO_ACTIVE_LOW>;
