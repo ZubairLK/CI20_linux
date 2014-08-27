@@ -501,10 +501,12 @@ static int jz4780_dma_terminate_all(struct jz4780_dma_chan *jzchan)
 static int jz4780_dma_slave_config(struct jz4780_dma_chan *jzchan,
 	const struct dma_slave_config *config)
 {
-	if (config->src_addr_width == DMA_SLAVE_BUSWIDTH_8_BYTES ||
-	    config->src_addr_width == DMA_SLAVE_BUSWIDTH_UNDEFINED ||
-	    config->dst_addr_width == DMA_SLAVE_BUSWIDTH_8_BYTES ||
-	    config->src_addr_width == DMA_SLAVE_BUSWIDTH_UNDEFINED)
+	if ((config->src_addr_width == DMA_SLAVE_BUSWIDTH_8_BYTES)
+	   || (config->dst_addr_width == DMA_SLAVE_BUSWIDTH_8_BYTES))
+		return -EINVAL;
+
+	if ((config->src_addr_width == DMA_SLAVE_BUSWIDTH_UNDEFINED)
+	   && (config->dst_addr_width == DMA_SLAVE_BUSWIDTH_UNDEFINED))
 		return -EINVAL;
 
 	/* Copy the reset of the slave configuration, it is used later. */
