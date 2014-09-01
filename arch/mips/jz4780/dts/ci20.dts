@@ -58,6 +58,27 @@
 			gpio = <&gpb 25 GPIO_ACTIVE_LOW>;
 			enable-active-high;
 		};
+
+		wifi_power: fixedregulator@2 {
+			compatible = "regulator-fixed";
+			regulator-name = "wifi_power_gpio";
+			gpio = <&gpb 19 0>;
+			enable-active-high;
+
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+
+		};
+
+		/* HACK: Keeping wifi reset high. No simple driver fix */
+		wifi_reset: fixedregulator@3 {
+			compatible = "regulator-fixed";
+			regulator-name = "wifi_reset_gpio";
+			gpio = <&gpf 7 0>;
+			enable-active-high;
+			regulator-always-on;
+		};
+
 	};
 };
 
@@ -68,6 +89,16 @@
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_msc0_pe>;
+};
+
+&msc1 {
+	bus-width = <4>;
+	max-frequency = <24000000>;
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_msc1_pd>;
+	vmmc-supply = <&wifi_power>;
 };
 
 &ehci {
