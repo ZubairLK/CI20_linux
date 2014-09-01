@@ -13,7 +13,7 @@ Required properties:
 - clocks: Clock for the MMC controller.
 
 Optional properties:
-- ingenic,power-gpio: GPIO specifier for the power enable pin.
+- vmmc-supply: phandle to regulator handling power for mmc
 
 Examples:
 
@@ -28,5 +28,8 @@ Examples:
 
     bus-width = <4>;
     cd-gpios = <&gpf 20 1>;
+
+    vmmc-supply = <&regulator_power>;
+
   };
 
