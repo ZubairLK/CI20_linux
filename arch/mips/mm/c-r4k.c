@@ -1583,8 +1583,17 @@ early_param("cca", cca_setup);
 
 static void coherency_setup(void)
 {
-	if (cca < 0 || cca > 7)
-		cca = read_c0_config() & CONF_CM_CMASK;
+	if (cca < 0 || cca > 7) {
+		/*
+		 * Set CCA to non-coherent to ensure that the UP kernel
+		 * behaves properly even on MC processors where the ROM
+		 * may have prepared the C0 registers for SMP operation.
+		 */
+		if (!config_enabled(CONFIG_SMP))
+			cca = _CACHE_CACHABLE_NONCOHERENT >> _CACHE_SHIFT;
+		else
+			cca = read_c0_config() & CONF_CM_CMASK;
+	}
 	_page_cachable_default = cca << _CACHE_SHIFT;
 
 	pr_debug("Using cache attribute %d\n", cca);
