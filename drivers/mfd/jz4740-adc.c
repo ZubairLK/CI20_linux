@@ -44,6 +44,8 @@
 #define JZ_ADC_ENABLE_BATTERY	BIT(1)
 #define JZ_ADC_ENABLE_ADCIN	BIT(0)
 
+#define JZ_ADC_NR_IRQ		6
+
 enum {
 	JZ_ADC_IRQ_ADCIN = 0,
 	JZ_ADC_IRQ_BATTERY,
@@ -229,7 +231,7 @@ static int jz4740_adc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	irq_base = platform_get_irq(pdev, 1);
+	irq_base = irq_alloc_descs(-1, 0, JZ_ADC_NR_IRQ, 0);
 	if (irq_base < 0) {
 		dev_err(&pdev->dev, "Failed to get irq base: %d\n", irq_base);
 		return irq_base;

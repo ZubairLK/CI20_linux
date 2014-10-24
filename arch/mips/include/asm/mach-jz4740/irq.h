@@ -50,8 +50,5 @@
 #define JZ4740_IRQ_INTC_GPIO(x) (JZ4740_IRQ_GPIO0 - (x))
 #define JZ4740_IRQ_GPIO(x)	(JZ4740_IRQ(48) + (x))
 
-#define JZ4740_IRQ_ADC_BASE	JZ4740_IRQ(176)
-
-#define NR_IRQS (JZ4740_IRQ_ADC_BASE + 6)
 
 #endif

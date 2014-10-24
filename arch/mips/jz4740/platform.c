@@ -265,11 +265,6 @@ static struct resource jz4740_adc_resources[] = {
 		.end	= JZ4740_IRQ_SADC,
 		.flags	= IORESOURCE_IRQ,
 	},
-	{
-		.start	= JZ4740_IRQ_ADC_BASE,
-		.end	= JZ4740_IRQ_ADC_BASE,
-		.flags	= IORESOURCE_IRQ,
-	},
 };
 
 struct platform_device jz4740_adc_device = {
