@@ -34,6 +34,8 @@ struct jz4780_intc {
 	struct irq_domain *domain;
 };
 
+static struct jz4780_intc *jz_intc;
+
 #define INTC_ICMSR0	0x08
 #define INTC_ICMCR0	0x0c
 #define INTC_ICPR0	0x10
@@ -43,22 +45,20 @@ struct jz4780_intc {
 
 static void jz4780_intc_irq_unmask(struct irq_data *d)
 {
-	struct jz4780_intc *intc = irq_data_get_irq_handler_data(d);
 
 	if (d->hwirq < 32)
-		writel(BIT(d->hwirq), intc->base + INTC_ICMCR0);
+		writel(BIT(d->hwirq), jz_intc->base + INTC_ICMCR0);
 	else
-		writel(BIT(d->hwirq - 32), intc->base + INTC_ICMCR1);
+		writel(BIT(d->hwirq - 32), jz_intc->base + INTC_ICMCR1);
 }
 
 static void jz4780_intc_irq_mask(struct irq_data *d)
 {
-	struct jz4780_intc *intc = irq_data_get_irq_handler_data(d);
 
 	if (d->hwirq < 32)
-		writel(BIT(d->hwirq), intc->base + INTC_ICMSR0);
+		writel(BIT(d->hwirq), jz_intc->base + INTC_ICMSR0);
 	else
-		writel(BIT(d->hwirq - 32), intc->base + INTC_ICMSR1);
+		writel(BIT(d->hwirq - 32), jz_intc->base + INTC_ICMSR1);
 }
 
 static struct irq_chip jz4780_intc_irq_chip = {
@@ -70,20 +70,19 @@ static struct irq_chip jz4780_intc_irq_chip = {
 
 static void jz4780_intc_irq_handler(unsigned int irq, struct irq_desc *desc)
 {
-	struct jz4780_intc *intc = irq_get_handler_data(irq);
 	uint32_t pending;
 	unsigned mapped;
 
-	pending = readl(intc->base + INTC_ICPR0);
+	pending = readl(jz_intc->base + INTC_ICPR0);
 	if (pending) {
-		mapped = irq_find_mapping(intc->domain, __ffs(pending));
+		mapped = irq_find_mapping(jz_intc->domain, __ffs(pending));
 		generic_handle_irq(mapped);
 		return;
 	}
 
-	pending = readl(intc->base + INTC_ICPR1);
+	pending = readl(jz_intc->base + INTC_ICPR1);
 	if (pending) {
-		mapped = irq_find_mapping(intc->domain, 32 + __ffs(pending));
+		mapped = irq_find_mapping(jz_intc->domain, 32 + __ffs(pending));
 		generic_handle_irq(mapped);
 		return;
 	}
@@ -106,18 +105,17 @@ static struct irq_domain_ops jz4780_irq_domain_ops = {
 static int __init jz4780_intc_of_init(struct device_node *node,
 	struct device_node *parent)
 {
-	struct jz4780_intc *intc;
 	int irq;
 
-	intc = kcalloc(1, sizeof(*intc), GFP_NOWAIT | __GFP_NOFAIL);
+	jz_intc = kcalloc(1, sizeof(*jz_intc), GFP_NOWAIT | __GFP_NOFAIL);
 
-	intc->base = of_iomap(node, 0);
-	if (!intc->base)
+	jz_intc->base = of_iomap(node, 0);
+	if (!jz_intc->base)
 		panic("%s: unable to map registers\n", node->full_name);
 
-	intc->domain = irq_domain_add_linear(node, 64,
-		&jz4780_irq_domain_ops, intc);
-	if (!intc->domain)
+	jz_intc->domain = irq_domain_add_linear(node, 64,
+		&jz4780_irq_domain_ops, jz_intc);
+	if (!jz_intc->domain)
 		panic("%s: unable to create IRQ domain\n", node->full_name);
 
 	irq = irq_of_parse_and_map(node, 0);
@@ -125,7 +123,6 @@ static int __init jz4780_intc_of_init(struct device_node *node,
 		panic("%s: failed to get parent IRQ\n", node->full_name);
 
 	irq_set_chained_handler(irq, jz4780_intc_irq_handler);
-	irq_set_handler_data(irq, intc);
 
 	return 0;
 }
