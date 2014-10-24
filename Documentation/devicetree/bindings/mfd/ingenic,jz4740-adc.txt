@@ -1,7 +1,7 @@
-* Ingenic JZ4740 ADC
+* Ingenic JZ4740/JZ4780 ADC
 
 Required properties:
-- compatible: should be "ingenic,jz4740-adc"
+- compatible: can be "ingenic,jz4740-adc" or "ingenic,jz4780-adc"
 - reg: Should contain the address & length of registers
 - interrupts: Should specify the interrupt provided by parent.
 - clocks: Should contain a single clock specifier for the ADC clock.
