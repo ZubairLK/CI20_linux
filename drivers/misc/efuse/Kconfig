@@ -1,0 +1,17 @@
+#
+# Misc efuse devices. generally found in SoCs. Used to store mac addresses,
+# encryption keys, etc.
+#
+
+menu "Efuse devices"
+
+config JZ4780_EFUSE
+	bool "Ingenic JZ4780 EFUSE driver"
+	depends on MACH_JZ4780
+	default n
+	help
+	Say Y here if you want the efuse driver for the Ingenic JZ4780 SoC.
+
+
+endmenu
+
