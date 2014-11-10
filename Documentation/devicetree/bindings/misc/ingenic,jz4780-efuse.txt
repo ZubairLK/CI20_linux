@@ -1,0 +1,20 @@
+Ingenic JZ4780 EFUSE driver bindings
+
+Required properties:
+- "compatible"		Must be set to "ingenic,jz4780-efuse"
+- "reg"			Register location and length
+- "vddq-gpio"		gpio handle for VDDQ gpio. Used for programming the efuse
+- "clocks"		Handle for the ahb clock for the efuse.
+- "clock-names"		Must be "ahb2"
+
+Example:
+
+efuse: efuse@134100D0 {
+	compatible = "ingenic,jz4780-efuse";
+	reg = <0x134100D0 0xFF>;
+
+	vddq-gpio = <&gpe 4 GPIO_ACTIVE_LOW>;
+
+	clocks = <&cgu JZ4780_CLK_AHB2>;
+	clock-names = "ahb2";
+};
