@@ -621,6 +621,16 @@
 				clocks = <&cgu JZ4780_CLK_NEMC>;
 			};
 
+			efuse: efuse@134100D0 {
+				compatible = "ingenic,jz4780-efuse";
+				reg = <0x134100D0 0xFF>;
+
+				vddq-gpio = <&gpe 4 GPIO_ACTIVE_LOW>;
+
+				clocks = <&cgu JZ4780_CLK_AHB2>;
+				clock-names = "ahb2";
+			};
+
 			dma: dma@13420000 {
 				compatible = "ingenic,jz4780-dma";
 				reg = <0x13420000 0x10000>;
