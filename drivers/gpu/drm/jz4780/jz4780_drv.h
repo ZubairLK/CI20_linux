@@ -37,7 +37,7 @@
 /* Defaulting to maximum capability of JZ4780 */
 #define JZ4780_DEFAULT_MAX_PIXELCLOCK	200000
 #define JZ4780_DEFAULT_MAX_WIDTH	2048
-#define JZ4780_DEFAULT_MAX_BANDWIDTH	(1920*1080*60)
+#define JZ4780_DEFAULT_MAX_BANDWIDTH	(1920*1200*60)
 
 
 struct jz4780_drm_private {
