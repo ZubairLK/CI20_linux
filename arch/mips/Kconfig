@@ -292,6 +292,7 @@ config MACH_JZ4740
 	select PINCTRL_JZ4780
 	select SYS_SUPPORTS_HIGHMEM
 	select GENERIC_IRQ_CHIP
+	select JZ4740_IRQC
 	select BUILTIN_DTB
 	select USE_OF
 	select LIBFDT
@@ -308,6 +309,10 @@ config MACH_JZ4780
 	select SYS_HAS_EARLY_PRINTK
 	select COMMON_CLK
 	select GENERIC_IRQ_CHIP
+	select PINCTRL
+	select PINCTRL_JZ4780
+	select SYS_SUPPORTS_HIGHMEM
+	select JZ4740_IRQC
 	select BUILTIN_DTB
 	select USE_OF
 	select LIBFDT
