@@ -3,7 +3,7 @@
 #include "jz4780.dtsi"
 
 / {
-	compatible = "imgtec,ci20", "ingenic,jz4780";
+	compatible = "img,ci20", "ingenic,jz4780";
 
 	chosen {
 		stdout-path = &uart4;
