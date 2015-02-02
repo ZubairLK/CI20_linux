@@ -12,7 +12,7 @@ Required properties:
 
 Example:
 
-intc: intc@10001000 {
+interrupt-controller@10001000 {
 	compatible = "ingenic,jz4740-intc";
 	reg = <0x10001000 0x14>;
 
