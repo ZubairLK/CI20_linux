@@ -645,7 +645,7 @@ static int jz4780_pinctrl_parse_dt_pincfg(struct jz4780_pinctrl *jzpc,
 	if (!cfg_node)
 		return -EINVAL;
 
-	err = pinconf_generic_parse_dt_config(cfg_node, &configs,
+	err = pinconf_generic_parse_dt_config(cfg_node, NULL, &configs,
 			&num_configs);
 	if (err)
 		return err;
