@@ -1,3 +1,33 @@
+This is my personal repo. I may force refresh branches. :)
+
+Notes on 4.0-rc1 branch.
+
+What changed between 3.18 and 4.0-rc1?
+
+DMA. subtle stuff. Patched.
+Pinctrl. subtle stuff. Patched.
+
+Todo:
+This is a small (probably incomplete) todo list to reduce the divergence between mainline and this repo.
+Just looking at peripherals at the moment. Not core/jz4780
+
+-Use updated patches from Pauls upstream V1. 3.18 was based on older wip.
+-LCD. Modify driver to use the correct HDMI using drm bridge.
+-ACT8600 Regulator. Use the existing driver and add.
+-Serial. Paul has already patched it in a better way with 8250_ingenic.c. Use that.
+-DMA. Fix and send V2
+-I2C. Send V1 series
+-MMC. Use jz4740 driver. (polling should be easier. DMA needs an update to jz4740 dma)
+-NAND. Send V1
+-NEMC. Send V1
+-BCH. Send V1
+-USB. There is some bug in EHCI/OHCI.
+-DWC. Send V1 series
+
+etc..
+
+
+
 This is the Linux Kernel repo for the MIPS CREATOR CI20.
 
 It is based on the 3.18.3 stable branch.
