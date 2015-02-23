@@ -18,6 +18,7 @@
  */
 
 #include "drm_flip_work.h"
+#include <drm/drm_plane_helper.h>
 
 #include "jz4780_drv.h"
 #include "jz4780_regs.h"
@@ -571,12 +572,9 @@ struct drm_crtc *jz4780_crtc_create(struct drm_device *dev)
 	jz4780_crtc->dpms = DRM_MODE_DPMS_OFF;
 	init_waitqueue_head(&jz4780_crtc->frame_done_wq);
 
-	ret = drm_flip_work_init(&jz4780_crtc->unref_work, 16,
+	drm_flip_work_init(&jz4780_crtc->unref_work,
 			"unref", unref_worker);
-	if (ret) {
-		dev_err(dev->dev, "could not allocate unref FIFO\n");
-		goto fail;
-	}
+
 
 	ret = drm_crtc_init(dev, crtc, &jz4780_crtc_funcs);
 	if (ret < 0)
