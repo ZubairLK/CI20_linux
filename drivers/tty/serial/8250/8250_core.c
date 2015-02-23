@@ -344,6 +344,7 @@ configured less than Maximum supported fifo bytes */
 		.fcr		= UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_10 |
 				  UART_FCR7_64BYTE,
 		.flags		= UART_CAP_FIFO,
+	},
 	[PORT_INGENIC_JZ4780] = {
 		.name		= "Ingenic jz4780 UART",
 		.fifo_size	= 64,
