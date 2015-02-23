@@ -515,22 +515,6 @@ static int jz4780_dma_slave_config(struct jz4780_dma_chan *jzchan,
 	return 0;
 }
 
-static int jz4780_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
-	unsigned long arg)
-{
-	struct jz4780_dma_chan *jzchan = to_jz4780_dma_chan(chan);
-	struct dma_slave_config *config = (void *)arg;
-
-	switch (cmd) {
-	case DMA_TERMINATE_ALL:
-		return jz4780_dma_terminate_all(jzchan);
-	case DMA_SLAVE_CONFIG:
-		return jz4780_dma_slave_config(jzchan, config);
-	default:
-		return -ENOSYS;
-	}
-}
-
 static enum dma_status jz4780_dma_tx_status(struct dma_chan *chan,
 	dma_cookie_t cookie, struct dma_tx_state *txstate)
 {
@@ -766,7 +750,8 @@ static int jz4780_dma_probe(struct platform_device *pdev)
 	dd->device_prep_slave_sg = jz4780_dma_prep_slave_sg;
 	dd->device_prep_dma_cyclic = jz4780_dma_prep_dma_cyclic;
 	dd->device_prep_dma_memcpy = jz4780_dma_prep_dma_memcpy;
-	dd->device_control = jz4780_dma_control;
+	dd->device_config = jz4780_dma_slave_config;
+	dd->device_terminate_all = jz4780_dma_terminate_all;
 	dd->device_tx_status = jz4780_dma_tx_status;
 	dd->device_issue_pending = jz4780_dma_issue_pending;
 
