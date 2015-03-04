@@ -20,6 +20,7 @@ enum {
 };
 
 enum dw_hdmi_devtype {
+	JZ4780_HDMI,
 	IMX6Q_HDMI,
 	IMX6DL_HDMI,
 	RK3288_HDMI,

@@ -10,3 +10,13 @@ config DRM_JZ4780
 	  Choose this option if you have an Ingenic JZ4780 SoC with LCDC display
 	  controller, for example the MIPS Creator CI20 board
 
+config JZ4780_DW_HDMI
+        tristate "JZ4780 specific extensions for Synopsys DW HDMI"
+        depends on DRM_JZ4780
+        select DRM_DW_HDMI
+        help
+	  This selects support for JZ4780 SoC specific extensions
+	  for the Synopsys DesignWare HDMI driver. If you want to
+	  enable HDMI on JZ4780 based SoC, you should select this
+	  option.n if you have an Ingenic SoC with LCDC display
+	  controller, for example the CI20 board
