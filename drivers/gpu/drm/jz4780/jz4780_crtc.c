@@ -549,7 +549,7 @@ if (dirty)
 	if (state & LCDC_STATE_EOF) {
 	//	printk("%d \n" , __LINE__);
 		jz4780_write(dev, LCDC_STATE, state & ~LCDC_STATE_EOF);
-		update_scanout(crtc);
+		//update_scanout(crtc);
 	}
 
 	if (state & LCDC_STATE_OFU) {
